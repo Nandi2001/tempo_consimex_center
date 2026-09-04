@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tempo Consimex - Sistem Achiziții</title>
+    <!-- Vue 3 and Tailwind CSS CDNs -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+    <div id="app" class="flex flex-col min-h-screen">
+        
+        <!-- Navigation Header -->
+        <header class="bg-blue-900 text-white shadow-md">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <img src="/logo.svg" alt="Tempo Consimex Logo" class="h-10 w-auto bg-white p-1 rounded">
+                    <div>
+                        <h1 class="text-xl font-bold tracking-wide">Tempo Consimex</h1>
+                        <p class="text-xs text-blue-200">Generator Cereri Ofertă & Comenzi</p>
+                    </div>
+                </div>
+                <nav class="flex space-x-1">
+                    <button 
+                        @click="currentTab = 'dashboard'" 
+                        :class="currentTab === 'dashboard' ? 'bg-blue-800 text-white' : 'hover:bg-blue-800 text-blue-100'"
+                        class="px-4 py-2 rounded-md text-sm font-medium transition">
+                        📊 Tablou de Bord
+                    </button>
+                    <button 
+                        @click="currentTab = 'rfqs'" 
+                        :class="currentTab === 'rfqs' ? 'bg-blue-800 text-white' : 'hover:bg-blue-800 text-blue-100'"
+                        class="px-4 py-2 rounded-md text-sm font-medium transition">
+                        📝 Cereri Ofertă (RFQs)
+                    </button>
+                    <button 
+                        @click="currentTab = 'pos'" 
+                        :class="currentTab === 'pos' ? 'bg-blue-800 text-white' : 'hover:bg-blue-800 text-blue-100'"
+                        class="px-4 py-2 rounded-md text-sm font-medium transition">
+                        📦 Comenzi Ferme (POs)
+                    </button>
+                    <button 
+                        @click="currentTab = 'suppliers'" 
+                        :class="currentTab === 'suppliers' ? 'bg-blue-800 text-white' : 'hover:bg-blue-800 text-blue-100'"
+                        class="px-4 py-2 rounded-md text-sm font-medium transition">
+                        🏢 Gestiune Furnizori
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            
+            <!-- Global Messages / Alerts -->
+            <div v-if="notification" :class="notification.type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 'bg-green-100 border-green-400 text-green-700'" class="border px-4 py-3 rounded relative mb-4" role="alert">
+                <span class="block sm:inline">{{ notification.message }}</span>
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3" @click="notification = null">
+                    <svg class="fill-current h-6 w-6 text-gray-500 role='button'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                </span>
+            </div>
+
+                 <!-- Tab 1: Dashboard -->
+            <div v-if="currentTab === 'dashboard'" class="space-y-6">
+                <!-- KPI cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded shadow-sm">
+                        <div class="text-[11px] font-bold text-blue-700 uppercase tracking-wide">Valoare Achiziții (Total)</div>
+                        <div class="text-xl font-black text-gray-900 mt-1">{{ stats.totalSpend.toFixed(2) }} RON</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Excluzând comenzi ciornă</div>
+                    </div>
+                    <div class="bg-green-50 border-l-4 border-green-600 p-4 rounded shadow-sm">
+                        <div class="text-[11px] font-bold text-green-700 uppercase tracking-wide">Comenzi Active</div>
+                        <div class="text-xl font-black text-gray-900 mt-1">{{ stats.activePos }}</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Trimise sau confirmate</div>
+                    </div>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-600 p-4 rounded shadow-sm">
+                        <div class="text-[11px] font-bold text-yellow-700 uppercase tracking-wide">Cereri Active</div>
+                        <div class="text-xl font-black text-gray-900 mt-1">{{ stats.activeRfqs }}</div>
+                        <div class="text-[10px] text-gray-500 mt-1">În negociere/draft</div>
+                    </div>
+                    <div class="bg-purple-50 border-l-4 border-purple-600 p-4 rounded shadow-sm">
+                        <div class="text-[11px] font-bold text-purple-700 uppercase tracking-wide">Oferte Sosite</div>
+                        <div class="text-xl font-black text-gray-900 mt-1">{{ stats.arrivedOffers }}</div>
+                        <div class="text-[10px] text-gray-500 mt-1">Gata pentru comandă</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column: Actionable Notifications -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                            <h2 class="text-xs font-black text-gray-600 uppercase tracking-wider mb-3 flex items-center">
+                                <span class="mr-1.5 text-base">⚡</span> ACȚIUNI URGENTE (Workflow)
+                            </h2>
+                            <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                <div 
+                                    v-for="action in urgentActions" 
+                                    :key="action.id" 
+                                    :class="action.bg"
+                                    class="p-3 rounded-lg border text-xs flex justify-between items-center transition shadow-sm hover:shadow-md">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-base">{{ action.icon }}</span>
+                                        <div>
+                                            <p class="font-bold text-gray-900">{{ action.title }}</p>
+                                            <p class="text-gray-500 mt-0.5">{{ action.description }}</p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        @click="action.handler"
+                                        class="bg-white hover:bg-gray-50 text-gray-800 border px-3 py-1 rounded text-[10px] font-bold shadow-sm transition">
+                                        Rezolvă →
+                                    </button>
+                                </div>
+                                <div v-if="urgentActions.length === 0" class="text-center py-8 text-gray-400 text-xs">
+                                    ✓ Nu există acțiuni urgente. Toate documentele sunt la zi!
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top Suppliers List -->
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                            <h2 class="text-xs font-black text-gray-600 uppercase tracking-wider mb-3 flex items-center">
+                                <span class="mr-1.5 text-base">🏢</span> Top Furnizori după Valoare Achiziții
+                            </h2>
+                            <div class="overflow-x-auto text-xs">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Furnizor</th>
+                                            <th class="px-3 py-2 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Comenzi (RON)</th>
+                                            <th class="px-3 py-2 text-center text-[10px] font-bold text-gray-500 uppercase tracking-wider">Comenzi Livrate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        <tr v-for="sup in stats.topSuppliers" :key="sup.name" class="hover:bg-gray-50">
+                                            <td class="px-3 py-2 font-semibold text-gray-900">{{ sup.name }}</td>
+                                            <td class="px-3 py-2 text-right font-bold text-blue-900">{{ sup.total.toFixed(2) }} RON</td>
+                                            <td class="px-3 py-2 text-center font-bold text-green-700 bg-green-50/30">{{ sup.count }}</td>
+                                        </tr>
+                                        <tr v-if="stats.topSuppliers.length === 0">
+                                            <td colspan="3" class="text-center py-6 text-gray-400">Niciun furnizor cu comenzi înregistrate.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Status Distribution Stats -->
+                    <div class="space-y-6">
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                            <h2 class="text-xs font-black text-gray-600 uppercase tracking-wider mb-4 flex items-center">
+                                <span class="mr-1.5 text-base">📈</span> Status Cereri de Ofertă
+                            </h2>
+                            <div class="space-y-3.5 text-xs">
+                                <div v-for="st in rfqStatusDistribution" :key="st.name" class="space-y-1">
+                                    <div class="flex justify-between font-semibold">
+                                        <span class="text-gray-600">{{ st.name }}</span>
+                                        <span class="text-gray-950">{{ st.count }} ({{ st.pct.toFixed(0) }}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div :class="st.color" class="h-1.5 rounded-full" :style="{ width: st.pct + '%' }"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+                            <h2 class="text-xs font-black text-gray-600 uppercase tracking-wider mb-4 flex items-center">
+                                <span class="mr-1.5 text-base">📈</span> Status Comenzi Ferme
+                            </h2>
+                            <div class="space-y-3.5 text-xs">
+                                <div v-for="st in poStatusDistribution" :key="st.name" class="space-y-1">
+                                    <div class="flex justify-between font-semibold">
+                                        <span class="text-gray-600">{{ st.name }}</span>
+                                        <span class="text-gray-950">{{ st.count }} ({{ st.pct.toFixed(0) }}%)</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                                        <div :class="st.color" class="h-1.5 rounded-full" :style="{ width: st.pct + '%' }"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 7: RFQs list page -->
+            <div v-if="currentTab === 'rfqs'" class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-6 border-b pb-3">
+                    <h2 class="text-xl font-bold text-blue-900 flex items-center">
+                        <span class="mr-2">📝</span> Cereri de Ofertă (RFQs)
+                    </h2>
+                    <button @click="resetRFQFormAndSwitch" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded transition font-bold shadow-sm">
+                        + Adaugă RFQ Nou
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">ID RFQ</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Furnizor</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Data</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Ofertă Atașată</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Acțiuni</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr 
+                                v-for="rfq in rfqs" 
+                                :key="rfq.RFQ_ID" 
+                                @mouseenter="hoveredRfqId = rfq.RFQ_ID"
+                                @mouseleave="hoveredRfqId = null"
+                                :class="{'bg-blue-50/50 border-l-4 border-blue-500': rfq.RFQ_ID === hoveredRfqId}"
+                                class="hover:bg-gray-50/50 transition">
+                                <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-900">
+                                    RFQ-{{ rfq.RFQ_ID }}
+                                    <span v-if="pos.some(p => p.RFQ_ID === rfq.RFQ_ID)" class="ml-1.5 text-[9px] bg-green-100 text-green-800 font-extrabold px-1.5 py-0.5 rounded" title="Are comandă asociată">
+                                        🔗 PO-{{ pos.find(p => p.RFQ_ID === rfq.RFQ_ID).PO_ID }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap font-medium">{{ rfq.Supplier ? rfq.Supplier.Nume_Companie : 'N/A' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ rfq.Data }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap font-medium">
+                                    <select 
+                                        v-model="rfq.Status" 
+                                        @change="updateRFQStatus(rfq.RFQ_ID, rfq.Status)"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded p-1 font-semibold focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="Draft">Draft</option>
+                                        <option value="Sent">Sent (Trimisă)</option>
+                                        <option value="Offer Arrived">Offer Arrived (Ofertă Sosită)</option>
+                                        <option value="Comandă trimisă">Comandă trimisă</option>
+                                        <option value="Comandă livrată">Comandă livrată</option>
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div v-if="rfq.Attached_PDF_Path && rfq.Attached_PDF_Path.startsWith('text:')" class="flex flex-col space-y-1">
+                                        <span class="text-xs text-yellow-700 font-semibold max-w-xs truncate" :title="rfq.Attached_PDF_Path.substring(5)">
+                                            ✍ {{ rfq.Attached_PDF_Path.substring(5) }}
+                                        </span>
+                                        <div class="flex space-x-2">
+                                            <button @click="addTextOffer(rfq.RFQ_ID, rfq.Attached_PDF_Path.substring(5))" class="text-blue-600 hover:text-blue-800 text-[10px] underline font-medium">
+                                                Modifică text
+                                            </button>
+                                            <input type="file" :id="'file-' + rfq.RFQ_ID" class="hidden" accept=".pdf" @change="uploadQuotePDF(rfq.RFQ_ID, $event)">
+                                            <label :for="'file-' + rfq.RFQ_ID" class="text-indigo-600 hover:text-indigo-800 text-[10px] underline cursor-pointer font-medium">
+                                                Atașează PDF
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div v-else-if="rfq.Attached_PDF_Path" class="flex flex-col space-y-1">
+                                        <div class="flex items-center space-x-1">
+                                            <span class="text-xs text-green-600 font-semibold">✓ PDF Încărcat</span>
+                                            <a :href="'/' + rfq.Attached_PDF_Path.replace(/\\/g, '/')" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs underline font-bold">
+                                                (Vezi PDF)
+                                            </a>
+                                        </div>
+                                        <button @click="addTextOffer(rfq.RFQ_ID, '')" class="text-indigo-600 hover:text-indigo-800 text-[10px] text-left underline font-medium">
+                                            Înlocuiește cu Text
+                                        </button>
+                                    </div>
+                                    <div v-else class="flex flex-col space-y-1">
+                                        <div class="flex items-center space-x-1">
+                                            <input type="file" :id="'file-' + rfq.RFQ_ID" class="hidden" accept=".pdf" @change="uploadQuotePDF(rfq.RFQ_ID, $event)">
+                                            <label :for="'file-' + rfq.RFQ_ID" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs px-2.5 py-1 rounded cursor-pointer border transition text-center font-medium">
+                                                📂 Atașează PDF
+                                            </label>
+                                        </div>
+                                        <button @click="addTextOffer(rfq.RFQ_ID)" class="text-blue-600 hover:text-blue-800 text-[10px] text-left underline font-medium">
+                                            ✍ Adaugă Ofertă Text
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap space-x-1">
+                                    <button @click="viewRFQ(rfq)" class="border border-amber-500 hover:bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Vizualizează
+                                    </button>
+                                    <button @click="deleteRFQ(rfq.RFQ_ID)" class="border border-red-500 hover:bg-red-50 text-red-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Șterge
+                                    </button>
+                                    <button @click="generateRFQPDF(rfq.RFQ_ID)" class="border border-blue-500 hover:bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Export PDF
+                                    </button>
+                                    <button @click="sendRFQEmail(rfq.RFQ_ID)" class="border border-indigo-500 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Trimite Email
+                                    </button>
+                                    <button @click="initPOCreation(rfq)" class="border border-green-600 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-2 py-1 rounded transition">
+                                        Generează Comandă
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="rfqs.length === 0">
+                                <td colspan="6" class="text-center py-10 text-gray-500">Nu există cereri de ofertă înregistrate.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 8: POs list page -->
+            <div v-if="currentTab === 'pos'" class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-6 border-b pb-3">
+                    <h2 class="text-xl font-bold text-green-900 flex items-center">
+                        <span class="mr-2">📦</span> Comenzi Ferme (Purchase Orders)
+                    </h2>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">ID PO</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Sursă RFQ</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Furnizor</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Data</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                                <th class="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-wider">Acțiuni</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr 
+                                v-for="po in pos" 
+                                :key="po.PO_ID" 
+                                @mouseenter="hoveredRfqId = po.RFQ_ID"
+                                @mouseleave="hoveredRfqId = null"
+                                :class="{'bg-green-50/50 border-l-4 border-green-500': po.RFQ_ID === hoveredRfqId}"
+                                class="hover:bg-gray-50/50 transition">
+                                <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-900">PO-{{ po.PO_ID }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]" title="Cerere de ofertă sursă">
+                                        🔗 RFQ-{{ po.RFQ_ID }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap font-medium">{{ po.Supplier ? po.Supplier.Nume_Companie : 'N/A' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-600">{{ po.Data }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <select 
+                                        v-model="po.Status" 
+                                        @change="updatePOStatus(po.PO_ID, po.Status)"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded p-1 font-semibold focus:ring-green-500 focus:border-green-500">
+                                        <option value="Draft">Draft</option>
+                                        <option value="Sent">Sent (Trimisă)</option>
+                                        <option value="Confirmed">Confirmed (Confirmată)</option>
+                                        <option value="Arrived">Arrived (Sosită/Livrată)</option>
+                                    </select>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap space-x-1 font-medium">
+                                    <button @click="viewPO(po)" class="border border-amber-500 hover:bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Vizualizează
+                                    </button>
+                                    <button @click="deletePO(po.PO_ID)" class="border border-red-500 hover:bg-red-50 text-red-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Șterge
+                                    </button>
+                                    <button @click="generatePOPDF(po.PO_ID)" class="border border-blue-500 hover:bg-blue-50 text-blue-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Export PDF
+                                    </button>
+                                    <button @click="sendPOEmail(po.PO_ID)" class="border border-indigo-500 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold px-2 py-1 rounded transition">
+                                        Trimite Email
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="pos.length === 0">
+                                <td colspan="6" class="text-center py-10 text-gray-500">Nu există comenzi ferme înregistrate.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>   
+
+            <!-- Tab: View RFQ Details -->
+            <div v-if="currentTab === 'rfq-view'" class="space-y-6 max-w-6xl mx-auto">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-xl font-bold text-blue-900 flex items-center">
+                        <span class="mr-2">📄</span> Detalii Cerere de Ofertă RFQ-{{ activeDoc.RFQ_ID }}
+                    </h2>
+                    <button @click="currentTab = 'dashboard'" class="border border-gray-400 hover:bg-gray-100 text-gray-700 text-sm font-semibold px-3 py-1.5 rounded transition">
+                        ← Înapoi la Dashboard
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left: Metadata & Supplier Info -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Info Block -->
+                        <div class="bg-white p-5 rounded-lg shadow-md border-t-4 border-blue-900 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Detalii Document</h3>
+                                <div class="text-sm space-y-1">
+                                    <p>Număr Document: <strong class="text-gray-900">RFQ-{{ activeDoc.RFQ_ID }}</strong></p>
+                                    <p>Data Emitere: <strong class="text-gray-900">{{ activeDoc.Data }}</strong></p>
+                                    <p v-if="activeDoc.Termen_Livrare">Termen Livrare: <strong class="text-gray-900">{{ activeDoc.Termen_Livrare }}</strong></p>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span>Status:</span>
+                                        <select 
+                                            v-model="activeDoc.Status" 
+                                            @change="updateRFQStatus(activeDoc.RFQ_ID, activeDoc.Status)"
+                                            class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-1 font-medium">
+                                            <option value="Draft">Draft</option>
+                                            <option value="Sent">Sent (Trimisă)</option>
+                                            <option value="Offer Arrived">Offer Arrived (Ofertă Sosită)</option>
+                                            <option value="Comandă trimisă">Comandă trimisă</option>
+                                            <option value="Comandă livrată">Comandă livrată</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Furnizor Destinatar</h3>
+                                <div v-if="activeDoc.Supplier" class="text-sm space-y-1">
+                                    <p class="font-bold text-gray-900">{{ activeDoc.Supplier.Nume_Companie }}</p>
+                                    <p>Contact: {{ activeDoc.Supplier.Persoana_Contact || '-' }}</p>
+                                    <p>Email: <a :href="'mailto:' + activeDoc.Supplier.Email" class="text-blue-600 underline">{{ activeDoc.Supplier.Email }}</a></p>
+                                    <p>Telefon: {{ activeDoc.Supplier.Telefon || '-' }}</p>
+                                </div>
+                                <p v-else class="text-sm text-gray-500">Niciun furnizor selectat.</p>
+                            </div>
+                        </div>
+
+                        <!-- Linked PO Card (if exists) -->
+                        <div v-if="pos.some(p => p.RFQ_ID === activeDoc.RFQ_ID)" class="bg-green-50 p-4 border border-green-300 rounded-lg flex justify-between items-center shadow-sm">
+                            <div class="text-sm">
+                                <span class="text-green-800 font-bold">🔗 Comandă Fermă Asociată:</span>
+                                <strong class="text-gray-950 ml-1">PO-{{ pos.find(p => p.RFQ_ID === activeDoc.RFQ_ID).PO_ID }}</strong>
+                                <span class="text-gray-500 ml-2">({{ pos.find(p => p.RFQ_ID === activeDoc.RFQ_ID).Status }})</span>
+                            </div>
+                            <button @click="viewPO({PO_ID: pos.find(p => p.RFQ_ID === activeDoc.RFQ_ID).PO_ID})" class="border border-green-600 hover:bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded transition">
+                                Vizualizează Comandă 🔗
+                            </button>
+                        </div>
+
+                        <!-- Items Table -->
+                        <div class="bg-white p-5 rounded-lg shadow-md">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Articole Solicitate</h3>
+                            <div class="overflow-x-auto border rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Nr</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cod Articol</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Denumire</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Specificații Tehnice</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">U.M.</th>
+                                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cantitate</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Observații</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="it in activeDoc.items" :key="it.Item_ID" class="hover:bg-gray-50">
+                                            <td class="px-3 py-2 text-center text-gray-500 font-medium">{{ it.Nr_Crt }}</td>
+                                            <td class="px-3 py-2 text-gray-900">{{ it.Cod_Articol || '-' }}</td>
+                                            <td class="px-3 py-2 font-semibold text-blue-950">{{ it.Denumire }}</td>
+                                            <td class="px-3 py-2 text-gray-500">{{ it.Specificatii_Tehnice || '-' }}</td>
+                                            <td class="px-3 py-2 text-center text-gray-500">{{ it.Unitate || 'buc' }}</td>
+                                            <td class="px-3 py-2 text-right font-bold text-gray-900">{{ it.Cantitate }}</td>
+                                            <td class="px-3 py-2 text-gray-500 text-xs">{{ it.Observatii || '-' }}</td>
+                                        </tr>
+                                        <tr v-if="!activeDoc.items || activeDoc.items.length === 0">
+                                            <td colspan="7" class="text-center py-4 text-gray-500">Nu există articole adăugate.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Attachment / Preview Panel -->
+                    <div class="space-y-6">
+                        <div class="bg-white p-5 rounded-lg shadow-md border border-gray-200">
+                            <h3 class="text-xs font-semibold text-gray-400 uppercase mb-3">Ofertă Primită / Cotație</h3>
+                            
+                            <!-- PDF Preview -->
+                            <div v-if="activeDoc.Attached_PDF_Path && !activeDoc.Attached_PDF_Path.startsWith('text:')">
+                                <div class="flex justify-between items-center mb-2 bg-green-50 p-2 border border-green-200 rounded">
+                                    <span class="text-xs text-green-700 font-semibold">✓ PDF Atașat</span>
+                                    <a :href="'/' + activeDoc.Attached_PDF_Path.replace(/\\/g, '/')" target="_blank" class="text-blue-600 hover:text-blue-800 text-xs underline font-medium">
+                                        Deschide Complet ↗
+                                    </a>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-lg overflow-hidden border">
+                                    <iframe :src="'/' + activeDoc.Attached_PDF_Path.replace(/\\/g, '/')" class="w-full h-96"></iframe>
+                                </div>
+                                <button @click="addTextOffer(activeDoc.RFQ_ID, '').then(() => refreshViewRFQ(activeDoc.RFQ_ID))" class="w-full mt-3 border text-gray-700 text-xs py-1.5 rounded hover:bg-gray-50">
+                                    Înlocuiește cu Ofertă Text
+                                </button>
+                            </div>
+
+                            <!-- Text offer display -->
+                            <div v-else-if="activeDoc.Attached_PDF_Path && activeDoc.Attached_PDF_Path.startsWith('text:')" class="space-y-2">
+                                <div class="bg-yellow-50 border border-yellow-300 rounded p-4 text-sm text-yellow-955 font-medium shadow-inner">
+                                    <p class="text-xs text-yellow-700 uppercase font-semibold mb-1">✍ Detalii Ofertă Text:</p>
+                                    <p class="italic text-gray-800">"{{ activeDoc.Attached_PDF_Path.substring(5) }}"</p>
+                                </div>
+                                <div class="flex space-x-2 pt-1">
+                                    <button @click="addTextOffer(activeDoc.RFQ_ID, activeDoc.Attached_PDF_Path.substring(5)).then(() => refreshViewRFQ(activeDoc.RFQ_ID))" class="flex-grow bg-gray-100 hover:bg-gray-200 text-gray-800 border text-xs py-1.5 rounded transition">
+                                        Modifică Text
+                                    </button>
+                                    <div class="flex-grow">
+                                        <input type="file" :id="'view-file-' + activeDoc.RFQ_ID" class="hidden" accept=".pdf" @change="uploadQuotePDF(activeDoc.RFQ_ID, $event).then(() => refreshViewRFQ(activeDoc.RFQ_ID))">
+                                        <label :for="'view-file-' + activeDoc.RFQ_ID" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-center text-xs py-2 rounded cursor-pointer block transition font-medium">
+                                            Atașează PDF
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- No offer display -->
+                            <div v-else class="text-center py-8 space-y-4">
+                                <div class="text-3xl text-gray-300">📁</div>
+                                <p class="text-xs text-gray-500">Nicio ofertă (PDF/text) înregistrată pentru această cerere.</p>
+                                <div class="space-y-2 pt-2">
+                                    <div>
+                                        <input type="file" :id="'view-file-' + activeDoc.RFQ_ID" class="hidden" accept=".pdf" @change="uploadQuotePDF(activeDoc.RFQ_ID, $event).then(() => refreshViewRFQ(activeDoc.RFQ_ID))">
+                                        <label :for="'view-file-' + activeDoc.RFQ_ID" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-center text-xs py-2 rounded cursor-pointer block border border-dashed transition font-medium">
+                                            📂 Încarcă Ofertă PDF
+                                        </label>
+                                    </div>
+                                    <button @click="addTextOffer(activeDoc.RFQ_ID).then(() => refreshViewRFQ(activeDoc.RFQ_ID))" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded transition font-medium">
+                                        ✍ Adaugă Ofertă Text
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Actions Bar -->
+                <div class="bg-gray-50 border-t p-4 rounded-lg flex flex-wrap gap-2 justify-end">
+                    <button @click="deleteRFQ(activeDoc.RFQ_ID).then(success => { if (success) currentTab = 'dashboard'; })" class="border border-red-500 bg-white hover:bg-red-50 text-red-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Șterge Cerere
+                    </button>
+                    <button @click="currentTab = 'dashboard'" class="border border-gray-400 hover:bg-gray-100 text-gray-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Înapoi
+                    </button>
+                    <button @click="editRFQ(activeDoc)" class="border border-orange-500 bg-white hover:bg-orange-50 text-orange-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Editează Date
+                    </button>
+                    <button @click="generateRFQPDF(activeDoc.RFQ_ID)" class="border border-blue-500 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Descarcă PDF
+                    </button>
+                    <button @click="sendRFQEmail(activeDoc.RFQ_ID)" class="border border-indigo-500 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Trimite Email
+                    </button>
+                    <button @click="initPOCreation(activeDoc)" class="border border-green-600 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded transition">
+                        Generează Comandă
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: View PO Details -->
+            <div v-if="currentTab === 'po-view'" class="space-y-6 max-w-6xl mx-auto">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-xl font-bold text-green-900 flex items-center">
+                        <span class="mr-2">📄</span> Detalii Comandă Fermă PO-{{ activeDoc.PO_ID }}
+                    </h2>
+                    <button @click="currentTab = 'dashboard'" class="border border-gray-400 hover:bg-gray-100 text-gray-700 text-sm font-semibold px-3 py-1.5 rounded transition">
+                        ← Înapoi la Dashboard
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Left: Metadata -->
+                    <div class="md:col-span-2 space-y-6">
+                        <div class="bg-white p-5 rounded-lg shadow-md border-t-4 border-green-700 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Detalii Document</h3>
+                                <div class="text-sm space-y-1">
+                                    <p>Număr Document: <strong class="text-gray-900">PO-{{ activeDoc.PO_ID }}</strong></p>
+                                    <p>Cerere Ofertă Sursă: <a @click="viewRFQ({RFQ_ID: activeDoc.RFQ_ID})" class="text-blue-600 hover:underline font-semibold cursor-pointer">RFQ-{{ activeDoc.RFQ_ID }}</a></p>
+                                    <p>Data Emitere: <strong class="text-gray-900">{{ activeDoc.Data }}</strong></p>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span>Status:</span>
+                                        <select 
+                                            v-model="activeDoc.Status" 
+                                            @change="updatePOStatus(activeDoc.PO_ID, activeDoc.Status)"
+                                            class="bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded-lg p-1 font-medium">
+                                            <option value="Draft">Draft</option>
+                                            <option value="Sent">Sent (Trimisă)</option>
+                                            <option value="Confirmed">Confirmed (Confirmată)</option>
+                                            <option value="Arrived">Arrived (Sosită/Livrată)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-semibold text-gray-400 uppercase mb-2">Furnizor</h3>
+                                <div v-if="activeDoc.Supplier" class="text-sm space-y-1">
+                                    <p class="font-bold text-gray-900">{{ activeDoc.Supplier.Nume_Companie }}</p>
+                                    <p>Contact: {{ activeDoc.Supplier.Persoana_Contact || '-' }}</p>
+                                    <p>Email: <a :href="'mailto:' + activeDoc.Supplier.Email" class="text-blue-600 underline">{{ activeDoc.Supplier.Email }}</a></p>
+                                    <p>Telefon: {{ activeDoc.Supplier.Telefon || '-' }}</p>
+                                </div>
+                                <p v-else class="text-sm text-gray-500">Niciun furnizor selectat.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Statistics Card -->
+                    <div class="space-y-6">
+                        <div class="bg-green-50 border border-green-300 rounded-lg p-5 text-center shadow-md">
+                            <h3 class="text-xs font-semibold text-green-800 uppercase mb-2 tracking-wide">Total Valoare Comandă</h3>
+                            <div class="text-2xl font-black text-green-900 py-2">
+                                {{ getPoTotal(activeDoc).toFixed(2) }} RON
+                            </div>
+                            <div class="text-xs text-green-700 border-t border-green-200 pt-2 mt-2">
+                                Total articole: <strong class="text-green-950">{{ activeDoc.items ? activeDoc.items.length : 0 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="bg-white p-5 rounded-lg shadow-md">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Articole Comandate</h3>
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Nr</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cod Articol</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Denumire</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Specificații Tehnice</th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">U.M.</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cantitate</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Preț Unit (RON)</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total (RON)</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Observații</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="it in activeDoc.items" :key="it.PO_Item_ID" class="hover:bg-gray-50">
+                                    <td class="px-3 py-2 text-center text-gray-500 font-medium">{{ it.Nr_Crt }}</td>
+                                    <td class="px-3 py-2 text-gray-900">{{ it.Cod_Articol || '-' }}</td>
+                                    <td class="px-3 py-2 font-semibold text-green-950">{{ it.Denumire }}</td>
+                                    <td class="px-3 py-2 text-gray-500">{{ it.Specificatii_Tehnice || '-' }}</td>
+                                    <td class="px-3 py-2 text-center text-gray-500">{{ it.Unitate || 'buc' }}</td>
+                                    <td class="px-3 py-2 text-right text-gray-900 font-medium">{{ it.Cantitate }}</td>
+                                    <td class="px-3 py-2 text-right font-medium text-gray-700">{{ it.Pret_Unitar.toFixed(2) }}</td>
+                                    <td class="px-3 py-2 text-right font-bold text-green-900 bg-gray-50">{{ it.Total.toFixed(2) }}</td>
+                                    <td class="px-3 py-2 text-gray-500 text-xs">{{ it.Observatii || '-' }}</td>
+                                </tr>
+                                <tr v-if="!activeDoc.items || activeDoc.items.length === 0">
+                                    <td colspan="9" class="text-center py-4 text-gray-500">Nu există articole adăugate.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bottom Actions Bar -->
+                <div class="bg-gray-50 border-t p-4 rounded-lg flex flex-wrap gap-2 justify-end">
+                    <button @click="deletePO(activeDoc.PO_ID).then(success => { if (success) currentTab = 'dashboard'; })" class="border border-red-500 bg-white hover:bg-red-50 text-red-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Șterge Comandă
+                    </button>
+                    <button @click="currentTab = 'dashboard'" class="border border-gray-400 hover:bg-gray-100 text-gray-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Înapoi
+                    </button>
+                    <button @click="editPO(activeDoc)" class="border border-orange-500 bg-white hover:bg-orange-50 text-orange-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Editează Date / Prețuri
+                    </button>
+                    <button @click="generatePOPDF(activeDoc.PO_ID)" class="border border-blue-500 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Descarcă PDF
+                    </button>
+                    <button @click="sendPOEmail(activeDoc.PO_ID)" class="border border-indigo-500 bg-white hover:bg-indigo-50 text-indigo-700 text-xs font-semibold px-4 py-2 rounded transition">
+                        Trimite Email
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Create RFQ -->
+            <div v-if="currentTab === 'rfq-create'" class="bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto">
+                <h2 class="text-xl font-semibold text-blue-900 border-b pb-2 mb-6">
+                    {{ rfqForm.RFQ_ID ? 'Editează Cerere de Ofertă (RFQ-' + rfqForm.RFQ_ID + ')' : 'Creare Cerere de Ofertă (RFQ)' }}
+                </h2>
+                
+                <form @submit.prevent="saveRFQ" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Supplier Smart Dropdown -->
+                        <div class="relative">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Furnizor <span class="text-red-500">*</span></label>
+                            <input 
+                                type="text" 
+                                v-model="rfqForm.supplierSearch" 
+                                @input="searchSuppliers" 
+                                @focus="showSupplierSuggestions = true"
+                                placeholder="Caută sau introdu furnizor..." 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                required>
+                            
+                            <!-- Search Autocomplete Suggestions -->
+                            <div v-if="showSupplierSuggestions && rfqForm.supplierSearch" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg max-h-60 overflow-y-auto">
+                                <div 
+                                    v-for="s in filteredSuppliers" 
+                                    :key="s.ID" 
+                                    @click="selectSupplier(s)"
+                                    class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm">
+                                    {{ s.Nume_Companie }} ({{ s.Email }})
+                                </div>
+                                <!-- If supplier does not exist -->
+                                <div v-if="filteredSuppliers.length === 0" class="p-3 text-sm text-gray-500">
+                                    <p class="mb-2">Niciun furnizor găsit cu numele "{{ rfqForm.supplierSearch }}"</p>
+                                    <button 
+                                        type="button" 
+                                        @click="openAddSupplierModal(rfqForm.supplierSearch)"
+                                        class="w-full bg-blue-600 text-white rounded px-2.5 py-1.5 text-xs font-semibold hover:bg-blue-700 transition">
+                                        + Adaugă Furnizor în Baza de Date
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Selected supplier indicator -->
+                            <div v-if="rfqForm.Supplier_ID" class="mt-2 text-xs text-green-700 bg-green-50 p-2 rounded flex justify-between items-center border border-green-200">
+                                <span>Furnizor Selectat: <strong>{{ selectedSupplierName }}</strong></span>
+                                <button type="button" @click="clearSelectedSupplier" class="text-red-500 hover:text-red-700 font-bold ml-2">❌</button>
+                            </div>
+                        </div>
+
+                        <!-- Date Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data Document <span class="text-red-500">*</span></label>
+                            <input 
+                                type="date" 
+                                v-model="rfqForm.Data" 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                required>
+                        </div>
+
+                        <!-- Delivery Term -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Termen Livrare</label>
+                            <input 
+                                type="text" 
+                                v-model="rfqForm.Termen_Livrare" 
+                                placeholder="ex: 5 zile, urgent, etc."
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Item Table -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-semibold text-gray-700">Articole Solicitate</h3>
+                            <button type="button" @click="addRFQRow" class="bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 text-xs px-3 py-1.5 rounded transition font-semibold">
+                                + Adaugă Rând
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-10">Nr</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-36">Cod Articol</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500">Denumire <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500">Specificații Tehnice</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-20">U.M.</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-24">Cantitate <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-36">Observații</th>
+                                        <th class="px-2 py-2 text-center font-medium text-gray-500 w-12">Acțiuni</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr v-for="(item, idx) in rfqForm.items" :key="idx" class="hover:bg-gray-50">
+                                        <td class="px-2 py-2 text-center font-medium text-gray-700">{{ idx + 1 }}</td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Cod_Articol" class="w-full border rounded px-2 py-1 text-xs" placeholder="P/N-...">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Denumire" class="w-full border rounded px-2 py-1 text-xs" placeholder="ex: Robinet fonta" required>
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Specificatii_Tehnice" class="w-full border rounded px-2 py-1 text-xs" placeholder="Dimensiuni, standarde...">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <select v-model="item.Unitate" class="w-full border rounded px-2 py-1 text-xs bg-white">
+                                                <option value="buc">buc</option>
+                                                <option value="kg">kg</option>
+                                                <option value="m">m</option>
+                                                <option value="set">set</option>
+                                                <option value="litri">litri</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="number" step="any" v-model.number="item.Cantitate" class="w-full border rounded px-2 py-1 text-xs text-right" required min="0.001">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Observații" class="w-full border rounded px-2 py-1 text-xs">
+                                        </td>
+                                        <td class="px-2 py-2 text-center">
+                                            <button type="button" @click="deleteRFQRow(idx)" class="text-red-500 hover:text-red-700 font-bold" title="Șterge rând">
+                                                🗑
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="rfqForm.items.length === 0">
+                                        <td colspan="8" class="text-center py-4 text-gray-500 bg-gray-50">Niciun articol adăugat. Faceți clic pe "+ Adaugă Rând".</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end space-x-2 border-t pt-4">
+                        <button type="button" @click="currentTab = 'dashboard'" class="px-4 py-2 border rounded-md text-sm hover:bg-gray-100 transition">
+                            Renunță
+                        </button>
+                        <button type="submit" :disabled="!rfqForm.Supplier_ID || rfqForm.items.length === 0" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition disabled:opacity-50">
+                            Salvează Cererea de Ofertă
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tab 3: Suppliers -->
+            <div v-if="currentTab === 'suppliers'" class="space-y-6">
+                <!-- Add/Edit Supplier Card -->
+                <section class="bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
+                    <h2 class="text-lg font-semibold text-blue-900 border-b pb-2 mb-4">
+                        {{ editingSupplierId ? 'Editează Furnizor' : 'Adaugă Furnizor Nou' }}
+                    </h2>
+                    
+                    <form @submit.prevent="saveSupplier" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Denumire Companie <span class="text-red-500">*</span></label>
+                            <input type="text" v-model="supplierForm.Nume_Companie" class="w-full border rounded-md px-3 py-1.5 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Persoană Contact</label>
+                            <input type="text" v-model="supplierForm.Persoana_Contact" class="w-full border rounded-md px-3 py-1.5 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                            <input type="email" v-model="supplierForm.Email" class="w-full border rounded-md px-3 py-1.5 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Telefon</label>
+                            <input type="text" v-model="supplierForm.Telefon" class="w-full border rounded-md px-3 py-1.5 text-sm">
+                        </div>
+                        <div class="md:col-span-2 flex justify-end space-x-2 border-t pt-3 mt-2">
+                            <button type="button" v-if="editingSupplierId" @click="cancelSupplierEdit" class="px-3 py-1.5 border rounded-md text-xs hover:bg-gray-100 transition">
+                                Renunță
+                            </button>
+                            <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition">
+                                {{ editingSupplierId ? 'Actualizează Furnizor' : 'Salvează Furnizor' }}
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Suppliers List -->
+                <section class="bg-white p-6 rounded-lg shadow-md max-w-4xl mx-auto">
+                    <h2 class="text-lg font-semibold text-blue-900 border-b pb-2 mb-4">Registru Furnizori</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500">ID</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Companie</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Persoană Contact</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Email</th>
+                                    <th class="px-4 py-3 text-left font-medium text-gray-500">Telefon</th>
+                                    <th class="px-4 py-3 text-center font-medium text-gray-500">Acțiuni</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="s in suppliers" :key="s.ID" class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-500">#{{ s.ID }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ s.Nume_Companie }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ s.Persoana_Contact }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ s.Email }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">{{ s.Telefon }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-center space-x-2">
+                                        <button @click="editSupplier(s)" class="text-indigo-600 hover:text-indigo-800 font-semibold hover:underline">
+                                            Editează
+                                        </button>
+                                        <button @click="deleteSupplier(s.ID)" class="text-red-600 hover:text-red-800 font-semibold hover:underline">
+                                            Șterge
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="suppliers.length === 0">
+                                    <td colspan="6" class="text-center py-4 text-gray-500">Nu există furnizori înregistrați.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Tab 4: Generate PO (Form Loaded from RFQ) -->
+            <div v-if="currentTab === 'po-create'" class="bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto">
+                <h2 class="text-xl font-semibold text-green-900 border-b pb-2 mb-6">Generare Comandă Fermă (PO)</h2>
+                <div class="bg-green-50 p-4 border border-green-200 rounded-md mb-6 text-sm text-green-800">
+                    Pregătire comandă pe baza cererii <strong>RFQ-{{ poForm.RFQ_ID }}</strong> trimise către furnizorul <strong>{{ selectedRFQSupplierName }}</strong>.
+                </div>
+
+                <form @submit.prevent="savePO" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Furnizor (Copiat din RFQ)</label>
+                            <input type="text" :value="selectedRFQSupplierName" class="w-full bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 cursor-not-allowed" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data Emitere Comandă <span class="text-red-500">*</span></label>
+                            <input 
+                                type="date" 
+                                v-model="poForm.Data" 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                required>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic PO Item Table -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-semibold text-gray-700">Articole Comandate & Prețuri Facturare</h3>
+                            <button type="button" @click="addPORow" class="bg-green-100 hover:bg-green-200 text-green-900 border border-green-300 text-xs px-3 py-1.5 rounded transition font-semibold">
+                                + Adaugă Rând Nou
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-10">Nr</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-32">Cod Articol</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500">Denumire <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500">Specificații Tehnice</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-16">U.M.</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-20">Cantitate <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-24">Preț Unit. (RON) <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-24">Total (RON)</th>
+                                        <th class="px-2 py-2 text-left font-medium text-gray-500 w-28">Observații</th>
+                                        <th class="px-2 py-2 text-center font-medium text-gray-500 w-12">Acțiuni</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr v-for="(item, idx) in poForm.items" :key="idx" class="hover:bg-gray-50">
+                                        <td class="px-2 py-2 text-center font-medium text-gray-700">{{ idx + 1 }}</td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Cod_Articol" class="w-full border rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Denumire" class="w-full border rounded px-1.5 py-1 text-xs" required>
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Specificatii_Tehnice" class="w-full border rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Unitate" class="w-full border rounded px-1.5 py-1 text-xs text-center">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="number" step="any" v-model.number="item.Cantitate" class="w-full border rounded px-1.5 py-1 text-xs text-right" required min="0.001">
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="number" step="any" v-model.number="item.Pret_Unitar" class="w-full border rounded px-1.5 py-1 text-xs text-right font-semibold bg-yellow-50 focus:bg-white" required min="0">
+                                        </td>
+                                        <td class="px-2 py-2 text-right font-bold text-gray-900 bg-gray-50">
+                                            {{ (item.Cantitate * item.Pret_Unitar).toFixed(2) }}
+                                        </td>
+                                        <td class="px-1 py-1">
+                                            <input type="text" v-model="item.Observații" class="w-full border rounded px-1.5 py-1 text-xs">
+                                        </td>
+                                        <td class="px-2 py-2 text-center">
+                                            <button type="button" @click="deletePORow(idx)" class="text-red-500 hover:text-red-700 font-bold">
+                                                🗑
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Calculated Grand Total Indicator -->
+                        <div class="flex justify-end mt-4">
+                            <div class="bg-green-50 border border-green-300 rounded px-6 py-2 text-sm font-semibold text-green-950 flex items-center">
+                                <span class="mr-3">Total Valoare Comandă:</span>
+                                <span class="text-lg font-extrabold text-green-800">{{ poGrandTotal.toFixed(2) }} RON</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-end space-x-2 border-t pt-4">
+                        <button type="button" @click="currentTab = 'dashboard'" class="px-4 py-2 border rounded-md text-sm hover:bg-gray-100 transition">
+                            Renunță
+                        </button>
+                        <button type="submit" :disabled="poForm.items.length === 0" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition disabled:opacity-50">
+                            Salvează Comanda Fermă
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Smart Input Add Supplier Modal -->
+            <div v-if="showAddSupplierModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+                    <h3 class="text-lg font-bold text-blue-900 border-b pb-2 mb-4">Adaugă Furnizor Nou</h3>
+                    <p class="text-xs text-gray-500 mb-4">Compania "<strong>{{ quickSupplierName }}</strong>" nu a fost găsită în baza de date. Completați restul detaliilor pentru a o salva automat.</p>
+                    
+                    <form @submit.prevent="saveQuickSupplier" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nume Companie</label>
+                            <input type="text" :value="quickSupplierName" class="w-full border rounded px-3 py-1.5 text-sm bg-gray-100 text-gray-600" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Persoană Contact</label>
+                            <input type="text" v-model="quickSupplierForm.Persoana_Contact" class="w-full border rounded px-3 py-1.5 text-sm" placeholder="ex: Popescu Ion">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                            <input type="email" v-model="quickSupplierForm.Email" class="w-full border rounded px-3 py-1.5 text-sm" placeholder="ex: furnizor@companie.ro" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Telefon</label>
+                            <input type="text" v-model="quickSupplierForm.Telefon" class="w-full border rounded px-3 py-1.5 text-sm" placeholder="ex: 0722123456">
+                        </div>
+                        <div class="flex justify-end space-x-2 border-t pt-4">
+                            <button type="button" @click="showAddSupplierModal = false" class="px-3 py-1.5 border rounded text-xs hover:bg-gray-100">
+                                Renunță
+                            </button>
+                            <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold transition">
+                                Salvează și Selectează
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="bg-gray-800 text-gray-400 py-4 text-center text-xs mt-auto">
+            &copy; 2026 Tempo Consimex SRL. Toate drepturile rezervate. Gestiune achiziții locală.
+        </footer>
+    </div>
+
+    <!-- Frontend App Logic -->
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // Navigation / Tabs
+                const currentTab = ref('dashboard');
+                const notification = ref(null);
+                const hoveredRfqId = ref(null);
+
+                // Data states
+                const suppliers = ref([]);
+                const rfqs = ref([]);
+                const pos = ref([]);
+
+                // --- Suppliers states ---
+                const supplierForm = ref({
+                    Nume_Companie: '',
+                    Persoana_Contact: '',
+                    Email: '',
+                    Telefon: ''
+                });
+                const editingSupplierId = ref(null);
+
+                // --- RFQ form states ---
+                const rfqForm = ref({
+                    RFQ_ID: null,
+                    supplierSearch: '',
+                    Supplier_ID: null,
+                    Data: new Date().toISOString().split('T')[0],
+                    Status: 'Draft',
+                    Termen_Livrare: '',
+                    items: [
+                        { Cod_Articol: '', Denumire: '', Specificatii_Tehnice: '', Unitate: 'buc', Cantitate: 1, Observații: '' }
+                    ]
+                });
+                const showSupplierSuggestions = ref(false);
+                const selectedSupplierName = ref('');
+
+                // --- Smart Input modal state ---
+                const showAddSupplierModal = ref(false);
+                const quickSupplierName = ref('');
+                const quickSupplierForm = ref({
+                    Persoana_Contact: '',
+                    Email: '',
+                    Telefon: ''
+                });
+
+                // --- PO form states ---
+                const poForm = ref({
+                    PO_ID: null,
+                    RFQ_ID: null,
+                    Data: new Date().toISOString().split('T')[0],
+                    Status: 'Draft',
+                    items: []
+                });
+                const selectedRFQSupplierName = ref('');
+
+                // --- Details Visualization state ---
+                const activeDoc = ref({});
+
+                // Fetch database records from backend
+                const fetchSuppliers = async () => {
+                    try {
+                        const res = await fetch('/api/suppliers');
+                        suppliers.value = await res.json();
+                    } catch (e) {
+                        showNotification('Eroare la incarcarea furnizorilor!', 'error');
+                    }
+                };
+
+                const fetchRFQs = async () => {
+                    try {
+                        const res = await fetch('/api/rfqs');
+                        rfqs.value = await res.json();
+                    } catch (e) {
+                        showNotification('Eroare la incarcarea RFQ-urilor!', 'error');
+                    }
+                };
+
+                const fetchPOs = async () => {
+                    try {
+                        const res = await fetch('/api/pos');
+                        pos.value = await res.json();
+                    } catch (e) {
+                        showNotification('Eroare la incarcarea comenzilor!', 'error');
+                    }
+                };
+
+                const showNotification = (message, type = 'success') => {
+                    notification.value = { message, type };
+                    // Auto dismiss in 5s
+                    setTimeout(() => {
+                        notification.value = null;
+                    }, 5000);
+                };
+
+                // Smart Supplier Autocomplete filter
+                const filteredSuppliers = computed(() => {
+                    if (!rfqForm.value.supplierSearch) return [];
+                    const q = rfqForm.value.supplierSearch.toLowerCase();
+                    return suppliers.value.filter(s => 
+                        s.Nume_Companie.toLowerCase().includes(q)
+                    );
+                });
+
+                // --- Dashboard Statistics & urgentActions ---
+                const stats = computed(() => {
+                    let totalSpend = 0;
+                    let activePos = 0;
+                    let activeRfqs = 0;
+                    let arrivedOffers = 0;
+                    
+                    const supplierSpend = {};
+                    const supplierCount = {};
+
+                    // Process POs
+                    pos.value.forEach(po => {
+                        const poTotal = po.items ? po.items.reduce((sum, item) => sum + (item.Cantitate * item.Pret_Unitar), 0) : 0;
+                        if (po.Status !== 'Draft') {
+                            totalSpend += poTotal;
+                            
+                            const sName = po.Supplier ? po.Supplier.Nume_Companie : 'N/A';
+                            supplierSpend[sName] = (supplierSpend[sName] || 0) + poTotal;
+                            if (po.Status === 'Arrived') {
+                                supplierCount[sName] = (supplierCount[sName] || 0) + 1;
+                            }
+                        }
+                        if (po.Status === 'Sent' || po.Status === 'Confirmed') {
+                            activePos++;
+                        }
+                    });
+
+                    // Process RFQs
+                    rfqs.value.forEach(rfq => {
+                        if (rfq.Status === 'Draft' || rfq.Status === 'Sent') {
+                            activeRfqs++;
+                        } else if (rfq.Status === 'Offer Arrived') {
+                            arrivedOffers++;
+                        }
+                    });
+
+                    // Sort top suppliers
+                    const topSuppliers = Object.keys(supplierSpend).map(name => ({
+                        name,
+                        total: supplierSpend[name],
+                        count: supplierCount[name] || 0
+                    })).sort((a, b) => b.total - a.total).slice(0, 5);
+
+                    return {
+                        totalSpend,
+                        activePos,
+                        activeRfqs,
+                        arrivedOffers,
+                        topSuppliers
+                    };
+                });
+
+                const urgentActions = computed(() => {
+                    const actions = [];
+                    
+                    // Alerts for RFQs without attachment
+                    rfqs.value.forEach(rfq => {
+                        if ((rfq.Status === 'Draft' || rfq.Status === 'Sent') && !rfq.Attached_PDF_Path) {
+                            actions.push({
+                                id: `rfq-no-quote-${rfq.RFQ_ID}`,
+                                icon: '📂',
+                                title: `Atașează Ofertă (RFQ-${rfq.RFQ_ID})`,
+                                description: `Nu s-a încărcat nicio ofertă de la ${rfq.Supplier ? rfq.Supplier.Nume_Companie : 'N/A'}.`,
+                                bg: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+                                handler: () => viewRFQ(rfq)
+                            });
+                        } else if (rfq.Status === 'Offer Arrived') {
+                            actions.push({
+                                id: `rfq-offer-arrived-${rfq.RFQ_ID}`,
+                                icon: '✍',
+                                title: `Generează Comandă Fermă (RFQ-${rfq.RFQ_ID})`,
+                                description: `Oferta a sosit de la ${rfq.Supplier ? rfq.Supplier.Nume_Companie : 'N/A'}. Plasează comanda!`,
+                                bg: 'bg-blue-50 border-blue-200 text-blue-800',
+                                handler: () => initPOCreation(rfq)
+                            });
+                        }
+                    });
+
+                    // Alerts for POs waiting delivery
+                    pos.value.forEach(po => {
+                        if (po.Status === 'Sent' || po.Status === 'Confirmed') {
+                            actions.push({
+                                id: `po-delivery-${po.PO_ID}`,
+                                icon: '📦',
+                                title: `Urmărește Livrarea (PO-${po.PO_ID})`,
+                                description: `Comanda către ${po.Supplier ? po.Supplier.Nume_Companie : 'N/A'} este confirmată și așteaptă livrarea.`,
+                                bg: 'bg-green-50 border-green-200 text-green-800',
+                                handler: () => viewPO(po)
+                            });
+                        }
+                    });
+
+                    return actions;
+                });
+
+                const rfqStatusDistribution = computed(() => {
+                    const statuses = ['Draft', 'Sent', 'Offer Arrived', 'Comandă trimisă', 'Comandă livrată'];
+                    const colors = {
+                        'Draft': 'bg-gray-400',
+                        'Sent': 'bg-blue-500',
+                        'Offer Arrived': 'bg-yellow-500',
+                        'Comandă trimisă': 'bg-indigo-500',
+                        'Comandă livrată': 'bg-green-500'
+                    };
+                    const counts = {};
+                    statuses.forEach(s => counts[s] = 0);
+                    rfqs.value.forEach(r => {
+                        const status = r.Status;
+                        counts[status] = (counts[status] || 0) + 1;
+                    });
+                    const total = rfqs.value.length || 1;
+                    return statuses.map(s => ({
+                        name: s,
+                        count: counts[s] || 0,
+                        pct: ((counts[s] || 0) / total) * 100,
+                        color: colors[s] || 'bg-gray-400'
+                    }));
+                });
+
+                const poStatusDistribution = computed(() => {
+                    const statuses = ['Draft', 'Sent', 'Confirmed', 'Arrived'];
+                    const colors = {
+                        'Draft': 'bg-gray-400',
+                        'Sent': 'bg-blue-500',
+                        'Confirmed': 'bg-orange-500',
+                        'Arrived': 'bg-green-500'
+                    };
+                    const counts = {};
+                    statuses.forEach(s => counts[s] = 0);
+                    pos.value.forEach(p => {
+                        const status = p.Status;
+                        counts[status] = (counts[status] || 0) + 1;
+                    });
+                    const total = pos.value.length || 1;
+                    return statuses.map(s => ({
+                        name: s,
+                        count: counts[s] || 0,
+                        pct: ((counts[s] || 0) / total) * 100,
+                        color: colors[s] || 'bg-gray-400'
+                    }));
+                });
+
+                const searchSuppliers = () => {
+                    showSupplierSuggestions.value = true;
+                    // Reset selected ID if typing changes
+                    if (rfqForm.value.supplierSearch !== selectedSupplierName.value) {
+                        rfqForm.value.Supplier_ID = null;
+                    }
+                };
+
+                const selectSupplier = (supplier) => {
+                    rfqForm.value.Supplier_ID = supplier.ID;
+                    rfqForm.value.supplierSearch = supplier.Nume_Companie;
+                    selectedSupplierName.value = supplier.Nume_Companie;
+                    showSupplierSuggestions.value = false;
+                };
+
+                const clearSelectedSupplier = () => {
+                    rfqForm.value.Supplier_ID = null;
+                    rfqForm.value.supplierSearch = '';
+                    selectedSupplierName.value = '';
+                };
+
+                // Smart Input Add Supplier Flow
+                const openAddSupplierModal = (name) => {
+                    quickSupplierName.value = name;
+                    quickSupplierForm.value = { Persoana_Contact: '', Email: '', Telefon: '' };
+                    showAddSupplierModal.value = ref(true);
+                    showSupplierSuggestions.value = false;
+                };
+
+                const saveQuickSupplier = async () => {
+                    try {
+                        const payload = {
+                            Nume_Companie: quickSupplierName.value,
+                            Persoana_Contact: quickSupplierForm.value.Persoana_Contact,
+                            Email: quickSupplierForm.value.Email,
+                            Telefon: quickSupplierForm.value.Telefon
+                        };
+                        const res = await fetch('/api/suppliers', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const newSupplier = await res.json();
+                        suppliers.value.push(newSupplier);
+                        
+                        // Select the newly added supplier
+                        selectSupplier(newSupplier);
+                        
+                        showAddSupplierModal.value = false;
+                        showNotification(`Furnizorul "${newSupplier.Nume_Companie}" a fost salvat si selectat!`);
+                    } catch (e) {
+                        showNotification('Eroare la salvarea rapida a furnizorului!', 'error');
+                    }
+                };
+
+                // --- CRUD Supplier logic ---
+                const saveSupplier = async () => {
+                    try {
+                        const method = editingSupplierId.value ? 'PUT' : 'POST';
+                        const url = editingSupplierId.value ? `/api/suppliers/${editingSupplierId.value}` : '/api/suppliers';
+                        
+                        const res = await fetch(url, {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(supplierForm.value)
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        
+                        showNotification(editingSupplierId.value ? 'Furnizor actualizat cu succes!' : 'Furnizor inregistrat cu succes!');
+                        cancelSupplierEdit();
+                        await fetchSuppliers();
+                    } catch (e) {
+                        showNotification('Eroare la salvarea furnizorului!', 'error');
+                    }
+                };
+
+                const editSupplier = (s) => {
+                    editingSupplierId.value = s.ID;
+                    supplierForm.value = {
+                        Nume_Companie: s.Nume_Companie,
+                        Persoana_Contact: s.Persoana_Contact || '',
+                        Email: s.Email || '',
+                        Telefon: s.Telefon || ''
+                    };
+                };
+
+                const cancelSupplierEdit = () => {
+                    editingSupplierId.value = null;
+                    supplierForm.value = { Nume_Companie: '', Persoana_Contact: '', Email: '', Telefon: '' };
+                };
+
+                const deleteSupplier = async (id) => {
+                    if (!confirm('Sigur doriti sa stergeti acest furnizor? Stergerea poate afecta documentele corelate.')) return;
+                    try {
+                        const res = await fetch(`/api/suppliers/${id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            showNotification('Furnizor sters.');
+                            await fetchSuppliers();
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la stergerea furnizorului!', 'error');
+                    }
+                };
+
+                // --- RFQ form row modifiers ---
+                const addRFQRow = () => {
+                    rfqForm.value.items.push({ Cod_Articol: '', Denumire: '', Specificatii_Tehnice: '', Unitate: 'buc', Cantitate: 1, Observații: '' });
+                };
+
+                const deleteRFQRow = (idx) => {
+                    rfqForm.value.items.splice(idx, 1);
+                };
+
+                const saveRFQ = async () => {
+                    try {
+                        const isEdit = !!rfqForm.value.RFQ_ID;
+                        const url = isEdit ? `/api/rfqs/${rfqForm.value.RFQ_ID}` : '/api/rfqs';
+                        const method = isEdit ? 'PUT' : 'POST';
+                        
+                        const res = await fetch(url, {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(rfqForm.value)
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        
+                        showNotification(isEdit ? 'Cererea de ofertă a fost actualizată cu succes!' : 'Cererea de ofertă a fost salvată cu succes!');
+                        // Reset form
+                        resetRFQFormAndSwitch();
+                        currentTab.value = 'dashboard';
+                        await fetchRFQs();
+                    } catch (e) {
+                        showNotification('Eroare la salvarea cererii de ofertă!', 'error');
+                    }
+                };
+
+                 const editRFQ = async (rfq) => {
+                    try {
+                        const res = await fetch(`/api/rfqs/${rfq.RFQ_ID}`);
+                        if (!res.ok) throw new Error();
+                        const rfqDetail = await res.json();
+                        
+                        rfqForm.value = {
+                            RFQ_ID: rfqDetail.RFQ_ID,
+                            supplierSearch: rfqDetail.Supplier ? rfqDetail.Supplier.Nume_Companie : '',
+                            Supplier_ID: rfqDetail.Supplier_ID,
+                            Data: rfqDetail.Data,
+                            Status: rfqDetail.Status,
+                            Termen_Livrare: rfqDetail.Termen_Livrare || '',
+                            items: rfqDetail.items.map(it => ({
+                                Cod_Articol: it.Cod_Articol || '',
+                                Denumire: it.Denumire,
+                                Specificatii_Tehnice: it.Specificatii_Tehnice || '',
+                                Unitate: it.Unitate || 'buc',
+                                Cantitate: it.Cantitate,
+                                Observații: it.Observatii || ''
+                            }))
+                        };
+                        selectedSupplierName.value = rfqDetail.Supplier ? rfqDetail.Supplier.Nume_Companie : '';
+                        currentTab.value = 'rfq-create';
+                    } catch (e) {
+                        showNotification('Eroare la încărcarea documentului RFQ pentru editare!', 'error');
+                    }
+                };
+
+                const resetRFQFormAndSwitch = () => {
+                    clearSelectedSupplier();
+                    rfqForm.value = {
+                        RFQ_ID: null,
+                        supplierSearch: '',
+                        Supplier_ID: null,
+                        Data: new Date().toISOString().split('T')[0],
+                        Status: 'Draft',
+                        Termen_Livrare: '',
+                        items: [
+                            { Cod_Articol: '', Denumire: '', Specificatii_Tehnice: '', Unitate: 'buc', Cantitate: 1, Observații: '' }
+                        ]
+                    };
+                    currentTab.value = 'rfq-create';
+                };
+
+                // --- Document PDF & Email Operations ---
+                const generateRFQPDF = async (id) => {
+                    showNotification('Se generează fișierul PDF...');
+                    try {
+                        const res = await fetch(`/api/rfqs/${id}/generate-pdf`, { method: 'POST' });
+                        const data = await res.json();
+                        if (data.pdf_url) {
+                            showNotification('PDF generat cu succes! Descărcarea se deschide...');
+                            window.open(data.pdf_url, '_blank');
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la compilarea PDF-ului RFQ!', 'error');
+                    }
+                };
+
+                const sendRFQEmail = async (id) => {
+                    showNotification('Se generează fișierul EML...');
+                    try {
+                        const res = await fetch(`/api/rfqs/${id}/send-email`, { method: 'POST' });
+                        if (res.ok) {
+                            showNotification('Draft-ul email-ului a fost trimis către aplicația desktop!');
+                            await fetchRFQs();  // Refresh for status shift
+                        } else {
+                            const err = await res.json();
+                            showNotification(`Eroare email: ${err.detail}`, 'error');
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la trimiterea email-ului!', 'error');
+                    }
+                };
+
+                const uploadQuotePDF = async (id, event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    showNotification('Se încarcă oferta...');
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    try {
+                        const res = await fetch(`/api/rfqs/${id}/upload-quote`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            showNotification('Oferta a fost atașată. Statusul s-a schimbat în "Offer Arrived".');
+                            await fetchRFQs();
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la încărcarea documentului ofertă!', 'error');
+                    }
+                };
+
+                const updateRFQStatus = async (id, status) => {
+                    try {
+                        const formData = new FormData();
+                        formData.append('status', status);
+                        
+                        const res = await fetch(`/api/rfqs/${id}/update-status`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            showNotification(`Statusul cererii RFQ-${id} s-a actualizat.`);
+                            await fetchRFQs();
+                            await fetchPOs();
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la schimbarea statusului cererii!', 'error');
+                    }
+                };
+
+                const addTextOffer = async (id, currentText = '') => {
+                    const textOffer = prompt("Introduceți textul/detaliile ofertei (ex: Preț total 1200 RON, livrare 2 zile):", currentText);
+                    if (textOffer === null) return;
+                    
+                    showNotification('Se salvează oferta text...');
+                    const formData = new FormData();
+                    formData.append('text_offer', textOffer);
+                    
+                    try {
+                        const res = await fetch(`/api/rfqs/${id}/attach-text`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            showNotification('Oferta text a fost salvată. Statusul s-a schimbat în "Offer Arrived".');
+                            await fetchRFQs();
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la salvarea ofertei text!', 'error');
+                    }
+                };
+
+                // --- PO Editor Flow (from Offer Arrived RFQ) ---
+                const initPOCreation = async (rfq) => {
+                    selectedRFQSupplierName.value = rfq.Supplier ? rfq.Supplier.Nume_Companie : 'N/A';
+                    
+                    // Fetch full RFQ details including items
+                    try {
+                        const res = await fetch(`/api/rfqs/${rfq.RFQ_ID}`);
+                        const rfqDetail = await res.json();
+                        
+                        poForm.value = {
+                            PO_ID: null,
+                            RFQ_ID: rfq.RFQ_ID,
+                            Data: new Date().toISOString().split('T')[0],
+                            Status: 'Draft',
+                            items: rfqDetail.items.map(it => ({
+                                Cod_Articol: it.Cod_Articol,
+                                Denumire: it.Denumire,
+                                Specificatii_Tehnice: it.Specificatii_Tehnice,
+                                Unitate: it.Unitate || 'buc',
+                                Cantitate: it.Cantitate,
+                                Pret_Unitar: 0.0,
+                                Observații: it.Observatii || ''
+                            }))
+                        };
+                        currentTab.value = 'po-create';
+                    } catch (e) {
+                        showNotification('Eroare la incarcarea articolelor din RFQ!', 'error');
+                    }
+                };
+
+                const addPORow = () => {
+                    poForm.value.items.push({ Cod_Articol: '', Denumire: '', Specificatii_Tehnice: '', Unitate: 'buc', Cantitate: 1, Pret_Unitar: 0, Observații: '' });
+                };
+
+                const deletePORow = (idx) => {
+                    poForm.value.items.splice(idx, 1);
+                };
+
+                const poGrandTotal = computed(() => {
+                    return poForm.value.items.reduce((sum, item) => sum + (item.Cantitate * item.Pret_Unitar), 0);
+                });
+
+                const savePO = async () => {
+                    try {
+                        const isEdit = !!poForm.value.PO_ID;
+                        const url = isEdit ? `/api/pos/${poForm.value.PO_ID}` : '/api/pos';
+                        const method = isEdit ? 'PUT' : 'POST';
+                        
+                        const res = await fetch(url, {
+                            method,
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(poForm.value)
+                        });
+                        
+                        if (!res.ok) throw new Error();
+                        
+                        showNotification(isEdit ? 'Comanda fermă a fost actualizată!' : 'Comanda fermă a fost înregistrată în baza de date!');
+                        currentTab.value = 'dashboard';
+                        await fetchPOs();
+                    } catch (e) {
+                        showNotification('Eroare la înregistrarea comenzii!', 'error');
+                    }
+                };
+
+                const updatePOStatus = async (id, status) => {
+                    try {
+                        const formData = new FormData();
+                        formData.append('status', status);
+                        
+                        const res = await fetch(`/api/pos/${id}/update-status`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (res.ok) {
+                            showNotification(`Statusul comenzii PO-${id} s-a actualizat.`);
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la schimbarea statusului comenzii!', 'error');
+                    }
+                };
+
+                const generatePOPDF = async (id) => {
+                    showNotification('Se generează fișierul PDF...');
+                    try {
+                        const res = await fetch(`/api/pos/${id}/generate-pdf`, { method: 'POST' });
+                        const data = await res.json();
+                        if (data.pdf_url) {
+                            showNotification('PDF comandă generat cu succes!');
+                            window.open(data.pdf_url, '_blank');
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la generarea PDF-ului comenzii!', 'error');
+                    }
+                };
+
+                const sendPOEmail = async (id) => {
+                    showNotification('Se generează fișierul EML...');
+                    try {
+                        const res = await fetch(`/api/pos/${id}/send-email`, { method: 'POST' });
+                        if (res.ok) {
+                            showNotification('Clientul de email a fost lansat.');
+                            await fetchPOs();
+                        } else {
+                            const err = await res.json();
+                            showNotification(`Eroare email: ${err.detail}`, 'error');
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la trimiterea comenzii prin email!', 'error');
+                    }
+                };
+
+                const viewRFQ = async (rfq) => {
+                    try {
+                        const res = await fetch(`/api/rfqs/${rfq.RFQ_ID}`);
+                        if (!res.ok) throw new Error();
+                        activeDoc.value = await res.json();
+                        currentTab.value = 'rfq-view';
+                    } catch (e) {
+                        showNotification('Eroare la încărcarea detaliilor cererii!', 'error');
+                    }
+                };
+
+                const refreshViewRFQ = async (id) => {
+                    setTimeout(async () => {
+                        try {
+                            const res = await fetch(`/api/rfqs/${id}`);
+                            if (res.ok) {
+                                activeDoc.value = await res.json();
+                            }
+                        } catch (e) {}
+                    }, 500);
+                };
+
+                const viewPO = async (po) => {
+                    try {
+                        const res = await fetch(`/api/pos/${po.PO_ID}`);
+                        if (!res.ok) throw new Error();
+                        activeDoc.value = await res.json();
+                        currentTab.value = 'po-view';
+                    } catch (e) {
+                        showNotification('Eroare la încărcarea detaliilor comenzii!', 'error');
+                    }
+                };
+
+                const editPO = async (po) => {
+                    selectedRFQSupplierName.value = po.Supplier ? po.Supplier.Nume_Companie : 'N/A';
+                    try {
+                        const res = await fetch(`/api/pos/${po.PO_ID}`);
+                        if (!res.ok) throw new Error();
+                        const poDetail = await res.json();
+                        
+                        poForm.value = {
+                            PO_ID: poDetail.PO_ID,
+                            RFQ_ID: poDetail.RFQ_ID,
+                            Data: poDetail.Data,
+                            Status: poDetail.Status,
+                            items: poDetail.items.map(it => ({
+                                Cod_Articol: it.Cod_Articol || '',
+                                Denumire: it.Denumire,
+                                Specificatii_Tehnice: it.Specificatii_Tehnice || '',
+                                Unitate: it.Unitate || 'buc',
+                                Cantitate: it.Cantitate,
+                                Pret_Unitar: it.Pret_Unitar || 0.0,
+                                Observații: it.Observatii || ''
+                            }))
+                        };
+                        currentTab.value = 'po-create';
+                    } catch (e) {
+                        showNotification('Eroare la încărcarea documentului PO pentru editare!', 'error');
+                    }
+                };
+
+                const getPoTotal = (doc) => {
+                    if (!doc || !doc.items) return 0;
+                    return doc.items.reduce((sum, item) => sum + (item.Cantitate * item.Pret_Unitar), 0);
+                };
+
+                // Styling helpers for dashboard statuses
+                const statusBadgeClass = (status) => {
+                    switch (status) {
+                        case 'Draft': return 'bg-gray-100 text-gray-800';
+                        case 'Sent': return 'bg-blue-100 text-blue-800';
+                        case 'Offer Arrived': return 'bg-yellow-100 text-yellow-800';
+                        case 'Confirmed': return 'bg-green-100 text-green-800';
+                        default: return 'bg-gray-100 text-gray-800';
+                    }
+                };
+
+                const deleteRFQ = async (rfqId) => {
+                    if (!confirm(`Sigur doriți să ștergeți cererea de ofertă RFQ-${rfqId} și toate articolele asociate?`)) {
+                        return false;
+                    }
+                    try {
+                        const res = await fetch(`/api/rfqs/${rfqId}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            showNotification(`Cererea RFQ-${rfqId} a fost ștearsă cu succes.`, 'success');
+                            await fetchRFQs();
+                            return true;
+                        } else {
+                            const err = await res.json();
+                            showNotification(`Eroare: ${err.detail || 'Nu s-a putut șterge RFQ!'}`, 'error');
+                            return false;
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la ștergerea RFQ!', 'error');
+                        return false;
+                    }
+                };
+
+                const deletePO = async (poId) => {
+                    if (!confirm(`Sigur doriți să ștergeți comanda PO-${poId} și toate articolele asociate?`)) {
+                        return false;
+                    }
+                    try {
+                        const res = await fetch(`/api/pos/${poId}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            showNotification(`Comanda PO-${poId} a fost ștearsă cu succes.`, 'success');
+                            await fetchPOs();
+                            await fetchRFQs();
+                            return true;
+                        } else {
+                            const err = await res.json();
+                            showNotification(`Eroare: ${err.detail || 'Nu s-a putut șterge PO!'}`, 'error');
+                            return false;
+                        }
+                    } catch (e) {
+                        showNotification('Eroare la ștergerea PO!', 'error');
+                        return false;
+                    }
+                };
+
+                // Initialization lifecycle
+                onMounted(() => {
+                    fetchSuppliers();
+                    fetchRFQs();
+                    fetchPOs();
+                });
+
+                return {
+                    currentTab,
+                    notification,
+                    hoveredRfqId,
+                    suppliers,
+                    rfqs,
+                    pos,
+                    supplierForm,
+                    editingSupplierId,
+                    rfqForm,
+                    showSupplierSuggestions,
+                    selectedSupplierName,
+                    filteredSuppliers,
+                    showAddSupplierModal,
+                    quickSupplierName,
+                    quickSupplierForm,
+                    poForm,
+                    selectedRFQSupplierName,
+                    poGrandTotal,
+                    activeDoc,
+                    stats,
+                    urgentActions,
+                    rfqStatusDistribution,
+                    poStatusDistribution,
+                    
+                    // Methods
+                    searchSuppliers,
+                    selectSupplier,
+                    clearSelectedSupplier,
+                    openAddSupplierModal,
+                    saveQuickSupplier,
+                    saveSupplier,
+                    editSupplier,
+                    cancelSupplierEdit,
+                    deleteSupplier,
+                    addRFQRow,
+                    deleteRFQRow,
+                    saveRFQ,
+                    editRFQ,
+                    resetRFQFormAndSwitch,
+                    generateRFQPDF,
+                    sendRFQEmail,
+                    uploadQuotePDF,
+                    updateRFQStatus,
+                    addTextOffer,
+                    initPOCreation,
+                    addPORow,
+                    deletePORow,
+                    savePO,
+                    editPO,
+                    updatePOStatus,
+                    generatePOPDF,
+                    sendPOEmail,
+                    viewRFQ,
+                    viewPO,
+                    getPoTotal,
+                    refreshViewRFQ,
+                    statusBadgeClass,
+                    deleteRFQ,
+                    deletePO
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
