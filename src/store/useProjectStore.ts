@@ -53,16 +53,16 @@ interface ProjectState {
   
   // Multi-Project & Storage actions
   loadProjectsList: () => Promise<void>;
-  openProject: (id: string) => Promise<void>;
+  openProject: (id: string, preserveStep?: boolean) => Promise<void>;
   createNewProject: (customInfo?: Partial<ProjectInfo>) => Promise<string>;
   deleteProjectFromList: (id: string) => Promise<void>;
   duplicateProjectFromList: (id: string) => Promise<void>;
   saveProjectToJson: (customProject?: ProjectFullState) => void;
-  loadProjectFromJson: (file: File) => Promise<boolean>;
+  loadProjectFromJson: (file: File, preserveStep?: boolean) => Promise<boolean>;
   resetToDefaults: () => void;
   loadFromLocalDB: () => Promise<void>;
   recoverAllProjects: () => Promise<void>;
-  autoSaveToLocalDB: () => Promise<void>;
+  autoSaveToLocalDB: (immediate?: boolean) => Promise<void>;
   loadSampleAttachments: () => void;
 }
 
@@ -139,6 +139,8 @@ export const renumberChapters = (chaptersList: Chapter[]): Chapter[] => {
     }
   });
 };
+
+let autoSaveTimer: any = null;
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectId: `proj_${Date.now()}`,
@@ -678,13 +680,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     let coverImageHtml = '';
     if (p.coverImage) {
       coverImageHtml = `
-        <div style="width: 100%; max-width: 500px; height: 300px; display: flex; justify-content: center; align-items: center; overflow: hidden; border-radius: 8px; border: 1.5px solid #cbd5e1; background-color: #f8fafc; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06); margin: 0 auto;">
-          <img src="${p.coverImage}" style="max-width: 100%; max-height: 300px; width: 100%; height: 100%; object-fit: cover; display: block;" alt="Stație de pompare" />
+        <div style="width: 100%; max-width: 520px; display: flex; justify-content: center; align-items: center; margin: 0 auto;">
+          <img src="${p.coverImage}" style="max-width: 100%; max-height: 330px; width: auto; height: auto; display: block; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);" alt="Stație de pompare" />
         </div>
       `;
     } else {
       coverImageHtml = `
-        <div style="width: 100%; max-width: 500px; height: 240px; border: 2px dashed #cbd5e1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; color: #94a3b8; padding: 20px; margin: 0 auto;">
+        <div style="width: 100%; max-width: 500px; height: 220px; border: 2px dashed #cbd5e1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; color: #94a3b8; padding: 20px; margin: 0 auto;">
           <div style="font-size: 13px; font-weight: 700; color: #64748b;">[ Imagine Stație de Pompare ]</div>
           <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Încărcați poza în Pasul 2 (Atașamente)</div>
         </div>
@@ -774,11 +776,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  openProject: async (id: string) => {
+  openProject: async (id: string, preserveStep = false) => {
     try {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+      }
+
       set({ isLoading: true });
-      const all = await storageService.getAllProjects();
-      const target = all.find((p) => p.id === id);
+      const target = await storageService.getProject(id);
       if (!target) {
         set({ isLoading: false });
         return;
@@ -809,7 +815,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         projectInfo: target.projectInfo || { ...DEFAULT_PROJECT_INFO },
         chapters: renumberChapters(upgradedChapters),
         attachments: target.attachments || createDefaultAttachments(target.projectInfo?.nrPompe || 2),
-        activeStep: 1, // Open to Step 1: Informatii
+        activeStep: preserveStep ? get().activeStep : 1, // Open to Step 1: Informatii unless preserveStep is true
         selectedChapterId: upgradedChapters[0]?.id || 'ch-1',
         isLoading: false,
         isAutoSaved: true,
@@ -824,6 +830,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   createNewProject: async (customInfo?: Partial<ProjectInfo>) => {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = null;
+    }
+
     const newId = `proj_${Date.now()}`;
     const newProjectInfo: ProjectInfo = {
       ...DEFAULT_PROJECT_INFO,
@@ -868,15 +879,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   deleteProjectFromList: async (id: string) => {
     try {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+      }
+
       const remaining = await storageService.deleteProject(id);
       set({ savedProjects: remaining });
 
-      // If we deleted the current project, switch or create
+      // If we deleted the currently active project, switch to another or create a new one
       if (get().projectId === id) {
+        const isDashboard = get().activeStep === 0;
         if (remaining.length > 0) {
-          await get().openProject(remaining[0].id);
+          await get().openProject(remaining[0].id, isDashboard);
         } else {
           await get().createNewProject();
+          if (isDashboard) {
+            set({ activeStep: 0 });
+          }
         }
       }
     } catch (err) {
@@ -886,6 +906,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   duplicateProjectFromList: async (id: string) => {
     try {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+      }
       const duplicated = await storageService.duplicateProject(id);
       if (duplicated) {
         const all = await storageService.getAllProjects();
@@ -911,10 +935,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ isAutoSaved: true, lastSavedAt: new Date().toLocaleTimeString() });
   },
 
-  loadProjectFromJson: async (file: File) => {
+  loadProjectFromJson: async (file: File, preserveStep = false) => {
     try {
       set({ isLoading: true });
       const loaded = await storageService.importProjectFromJson(file);
+
+      // Check if project with loaded.id already exists in IndexedDB
+      const existing = await storageService.getProject(loaded.id);
+      if (existing) {
+        // If an existing project already has this ID, assign a new unique ID
+        // so that importing never overwrites an existing project!
+        loaded.id = `proj_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
+      }
+
       await storageService.saveProject(loaded);
       const all = await storageService.getAllProjects();
 
@@ -944,7 +977,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         projectInfo: loaded.projectInfo,
         chapters: renumberChapters(upgradedChapters),
         attachments: loaded.attachments,
-        activeStep: 1, // Go to Step 1: Informatii
+        activeStep: preserveStep ? get().activeStep : 1, // Preserve step if requested, otherwise go to Step 1
         selectedChapterId: upgradedChapters[0]?.id || 'ch-1',
         isLoading: false,
         isAutoSaved: true,
@@ -973,31 +1006,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   loadFromLocalDB: async () => {
     try {
-      let allProjects = await storageService.getAllProjects();
-      
-      // If we have fewer than 3 standard projects, seed/recover the missing ones
-      const standardProjects = getStandardInitialProjects();
-      let needsSave = false;
-
-      if (allProjects.length === 0) {
-        allProjects = standardProjects;
-        for (const p of allProjects) {
-          await storageService.saveProject(p);
-        }
-      } else {
-        // Merge missing standard projects
-        for (const stdProj of standardProjects) {
-          const exists = allProjects.some(
-            (p) => p.id === stdProj.id || (p.projectInfo?.cdaNr && p.projectInfo.cdaNr === stdProj.projectInfo.cdaNr)
-          );
-          if (!exists) {
-            allProjects.push(stdProj);
-            await storageService.saveProject(stdProj);
-            needsSave = true;
-          }
-        }
-      }
-
+      const allProjects = await storageService.getAllProjects();
       set({ savedProjects: allProjects });
 
       if (allProjects.length > 0) {
@@ -1041,34 +1050,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   recoverAllProjects: async () => {
     try {
-      const standardProjects = getStandardInitialProjects();
-      for (const p of standardProjects) {
-        await storageService.saveProject(p);
-      }
-      const all = await storageService.getAllProjects();
+      const all = await storageService.resetStandardProjects();
       set({ savedProjects: all, isAutoSaved: true });
       if (all.length > 0) {
-        await get().openProject(all[0].id);
+        await get().openProject(all[0].id, true);
       }
     } catch (err) {
       console.error('Error recovering projects:', err);
     }
   },
 
-  autoSaveToLocalDB: async () => {
-    const state = get();
-    const fullState: ProjectFullState = {
-      id: state.projectId,
-      version: '1.0.0',
-      savedAt: new Date().toISOString(),
-      projectInfo: state.projectInfo,
-      chapters: state.chapters,
-      attachments: state.attachments,
-      activeStep: state.activeStep,
+  autoSaveToLocalDB: async (immediate = false) => {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = null;
+    }
+
+    const doSave = async () => {
+      const state = get();
+      if (!state.projectId) return;
+
+      const fullState: ProjectFullState = {
+        id: state.projectId,
+        version: '1.0.0',
+        savedAt: new Date().toISOString(),
+        projectInfo: state.projectInfo,
+        chapters: state.chapters,
+        attachments: state.attachments,
+        activeStep: state.activeStep,
+      };
+
+      await storageService.saveProject(fullState);
+      const all = await storageService.getAllProjects();
+      set({ savedProjects: all, isAutoSaved: true, lastSavedAt: new Date().toLocaleTimeString() });
     };
-    await storageService.saveProject(fullState);
-    const all = await storageService.getAllProjects();
-    set({ savedProjects: all, isAutoSaved: true, lastSavedAt: new Date().toLocaleTimeString() });
+
+    if (immediate) {
+      await doSave();
+    } else {
+      set({ isAutoSaved: false });
+      autoSaveTimer = setTimeout(() => {
+        doSave();
+      }, 500);
+    }
   },
 
   loadSampleAttachments: () => {

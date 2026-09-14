@@ -93,7 +93,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   // 1. CDA_46 BR1: Canalizare stradală str. Emil Racovița BR1 (Alba Iulia)
   // -------------------------------------------------------------
   const br1Info: ProjectInfo = {
-    cdaNr: 'CDA_46-BR1',
+    cdaNr: 'CDA-2025-046-BR1',
     denumireLocatie: 'Canalizare stradală str. Emil Racovița BR1',
     localitate: 'Alba Iulia',
     judet: 'Alba',
@@ -110,7 +110,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     diametruGoluriPompe: '800 x 500 mm',
     diametruGolAcces: 'fi800 mm',
     diametruRefulare: 'DN150',
-    anFabricatie: '2026',
+    anFabricatie: '2025',
     furnizor: 'PURECO ENVIRONMENT SRL',
     beneficiar: 'Canalizare Stradală str. Racovița BR1, Alba Iulia, jud. Alba',
     antreprenor: '-',
@@ -123,7 +123,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   // 2. CDA_46 BR2: Canalizare stradală str. Emil Racovița BR2 (Alba Iulia)
   // -------------------------------------------------------------
   const br2Info: ProjectInfo = {
-    cdaNr: 'CDA_46-BR2',
+    cdaNr: 'CDA-2025-046-BR2',
     denumireLocatie: 'Canalizare stradală str. Emil Racovița BR2',
     localitate: 'Alba Iulia',
     judet: 'Alba',
@@ -140,7 +140,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     diametruGoluriPompe: '800 x 500 mm',
     diametruGolAcces: 'fi800 mm',
     diametruRefulare: 'DN150',
-    anFabricatie: '2026',
+    anFabricatie: '2025',
     furnizor: 'PURECO ENVIRONMENT SRL',
     beneficiar: 'Canalizare Stradală str. Racovița BR2, Alba Iulia, jud. Alba',
     antreprenor: '-',
@@ -153,7 +153,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   // 3. CDA_46 BR3: Canalizare stradală str. Emil Racovița BR3 (Alba Iulia)
   // -------------------------------------------------------------
   const br3Info: ProjectInfo = {
-    cdaNr: 'CDA_46-BR3',
+    cdaNr: 'CDA-2025-046-BR3',
     denumireLocatie: 'Canalizare stradală str. Emil Racovița BR3',
     localitate: 'Alba Iulia',
     judet: 'Alba',
@@ -170,7 +170,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     diametruGoluriPompe: '800 x 500 mm',
     diametruGolAcces: 'fi800 mm',
     diametruRefulare: 'DN150',
-    anFabricatie: '2026',
+    anFabricatie: '2025',
     furnizor: 'PURECO ENVIRONMENT SRL',
     beneficiar: 'Canalizare Stradală str. Racovița BR3, Alba Iulia, jud. Alba',
     antreprenor: '-',

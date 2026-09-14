@@ -143,12 +143,29 @@ export const pdfService = {
           table { width: 100%; border-collapse: collapse; margin: 10px 0; }
           th, td { border: 1px solid #cbd5e1; }
           th { background-color: #f1f5f9; font-weight: 700; color: #0f172a; padding: 6px 8px; }
+          img { max-width: 100%; height: auto; image-rendering: auto; }
           .font-mono { font-family: 'JetBrains Mono', monospace, Consolas, Courier; }
         </style>
         ${pageHtml}
       `;
 
       renderHost.appendChild(pageEl);
+
+      // Ensure all images are fully loaded and decoded before rendering canvas
+      const images = Array.from(pageEl.querySelectorAll('img'));
+      if (images.length > 0) {
+        await Promise.all(
+          images.map((img) => {
+            if (img.complete && img.naturalWidth > 0) {
+              return Promise.resolve();
+            }
+            return new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            });
+          })
+        );
+      }
 
       // Render high-res canvas (scale: 2 for 192 DPI crisp output)
       const canvas = await html2canvas(pageEl, {

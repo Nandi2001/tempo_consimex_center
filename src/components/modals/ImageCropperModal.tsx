@@ -134,6 +134,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 ? 'Format Copertă (16:10)'
                 : aspectRatio === 16 / 9
                 ? 'Format Panoramic (16:9)'
+                : aspectRatio === 3 / 2
+                ? 'Format Foto (3:2)'
                 : aspectRatio === 4 / 3
                 ? 'Format Standard (4:3)'
                 : aspectRatio === 1
@@ -156,6 +158,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 {[
                   { label: '16:10 (Recomandat)', val: 16 / 10 },
                   { label: '16:9', val: 16 / 9 },
+                  { label: '3:2', val: 3 / 2 },
                   { label: '4:3', val: 4 / 3 },
                   { label: '1:1', val: 1 },
                 ].map((preset) => (
