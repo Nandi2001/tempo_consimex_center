@@ -41,6 +41,10 @@ export const StepAttachments: React.FC = () => {
   const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [cropperImageSrc, setCropperImageSrc] = useState<string | null>(null);
   const [pendingImageFileName, setPendingImageFileName] = useState<string | null>(null);
+  const [croppingTarget, setCroppingTarget] = useState<'cover' | 'panel'>('cover');
+  const [cropperTitle, setCropperTitle] = useState('Decupare & Ajustare Fotografie Copertă');
+  const [cropperSubtitle, setCropperSubtitle] = useState('Alegeți zona vizibilă pe prima pagină (Copertă). Format recomandat 16:10.');
+  const [cropperAspect, setCropperAspect] = useState<number>(16 / 10);
 
   // Hidden inputs map
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -51,6 +55,17 @@ export const StepAttachments: React.FC = () => {
       const base64Data = await pdfService.fileToBase64(file);
 
       if (isImage) {
+        if (attId === 'att-imagine-tablou' || attId.includes('tablou') || attId.includes('panel')) {
+          setCroppingTarget('panel');
+          setCropperTitle('Decupare & Ajustare Poză Tablou de Comandă');
+          setCropperSubtitle('Alegeți zona vizibilă în Capitolul Tabloul de Comandă. Format recomandat 3:4 (Portret) sau 1:1.');
+          setCropperAspect(3 / 4);
+        } else {
+          setCroppingTarget('cover');
+          setCropperTitle('Decupare & Ajustare Fotografie Copertă');
+          setCropperSubtitle('Alegeți zona vizibilă pe prima pagină (Copertă). Format recomandat 16:10.');
+          setCropperAspect(16 / 10);
+        }
         // Open the cropper immediately for newly uploaded image
         setCropperImageSrc(base64Data);
         setPendingImageFileName(file.name);
@@ -73,16 +88,37 @@ export const StepAttachments: React.FC = () => {
     }
   };
 
-  const handleOpenCropperForExisting = (imageSrc: string) => {
+  const handleOpenCropperForCover = (imageSrc: string) => {
+    setCroppingTarget('cover');
+    setCropperTitle('Decupare & Ajustare Fotografie Copertă');
+    setCropperSubtitle('Alegeți zona vizibilă pe prima pagină (Copertă). Format recomandat 16:10.');
+    setCropperAspect(16 / 10);
     setCropperImageSrc(imageSrc);
     setPendingImageFileName(coverImageAtt?.fileName || 'Fotografie_statie_coperta.jpg');
     setIsCropperOpen(true);
   };
 
+  const handleOpenCropperForPanel = (imageSrc: string) => {
+    setCroppingTarget('panel');
+    setCropperTitle('Decupare & Ajustare Poză Tablou de Comandă');
+    setCropperSubtitle('Alegeți zona vizibilă în Capitolul Tabloul de Comandă. Format recomandat 3:4 (Portret) sau 1:1.');
+    setCropperAspect(3 / 4);
+    setCropperImageSrc(imageSrc);
+    setPendingImageFileName(panelImageAtt?.fileName || 'Picture3.jpg');
+    setIsCropperOpen(true);
+  };
+
   const handleSaveCroppedImage = (croppedDataUrl: string) => {
-    if (coverImageAtt) {
+    if (croppingTarget === 'cover' && coverImageAtt) {
       setAttachment(coverImageAtt.id, {
         fileName: pendingImageFileName || coverImageAtt.fileName || 'Fotografie_statie_coperta.jpg',
+        fileData: croppedDataUrl,
+        pageCount: 0,
+        uploadedAt: new Date().toLocaleTimeString(),
+      });
+    } else if (croppingTarget === 'panel' && panelImageAtt) {
+      setAttachment(panelImageAtt.id, {
+        fileName: pendingImageFileName || panelImageAtt.fileName || 'Picture3.jpg',
         fileData: croppedDataUrl,
         pageCount: 0,
         uploadedAt: new Date().toLocaleTimeString(),
@@ -93,7 +129,7 @@ export const StepAttachments: React.FC = () => {
   const handleOpenPreview = (att: AttachmentFile) => {
     if (att.fileData) {
       setPreviewAttachment(att);
-      if (att.type === 'cover_image' || att.fileData.startsWith('data:image/')) {
+      if (att.type === 'cover_image' || att.type === 'panel_image' || att.fileData.startsWith('data:image/')) {
         setPreviewUrl(att.fileData);
       } else {
         const cleanBase64 = att.fileData.replace(/^data:application\/pdf;base64,/, '');
@@ -129,9 +165,10 @@ export const StepAttachments: React.FC = () => {
     }
   };
 
-  // Separate cover image attachment from PDF attachments
+  // Separate image attachments from PDF attachments
   const coverImageAtt = attachments.find((a) => a.type === 'cover_image');
-  const pdfAttachments = attachments.filter((a) => a.type !== 'cover_image');
+  const panelImageAtt = attachments.find((a) => a.type === 'panel_image');
+  const pdfAttachments = attachments.filter((a) => a.type !== 'cover_image' && a.type !== 'panel_image');
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6">
@@ -144,10 +181,10 @@ export const StepAttachments: React.FC = () => {
             </div>
             <div>
               <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                Manager Atașamente & Fotografie Copertă
+                Manager Atașamente & Fotografii Echipamente
               </h2>
               <p className="text-xs sm:text-sm text-slate-500">
-                Atașați fotografia stației pentru prima pagină, decupați zona dorită, și încărcați fișele tehnice.
+                Atașați fotografia stației pentru copertă, poza tabloului de comandă și încărcați fișele tehnice PDF.
               </p>
             </div>
           </div>
@@ -159,7 +196,7 @@ export const StepAttachments: React.FC = () => {
                 useProjectStore.getState().loadSampleAttachments();
               }}
               className="inline-flex items-center px-3 py-1.5 rounded-lg border border-tempo-300 bg-tempo-50 hover:bg-tempo-100 text-tempo-800 text-xs font-bold transition shadow-2xs cursor-pointer"
-              title="Încarcă automat poza de copertă și fișierele PDF din folderul de referință"
+              title="Încarcă automat pozele de referință și fișierele PDF demonstrative"
             >
               <Sparkles className="w-3.5 h-3.5 mr-1.5 text-tempo-600" />
               Încarcă Documente Demo
@@ -177,7 +214,7 @@ export const StepAttachments: React.FC = () => {
       </div>
 
       {/* 1. TOP HERO SECTION: IMAGINE COPERTA WITH CROPPER */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-5 overflow-hidden">
         <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-md bg-blue-50 text-tempo-600">
@@ -210,7 +247,7 @@ export const StepAttachments: React.FC = () => {
                 <div className="absolute inset-0 bg-black/50 text-white flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition p-2">
                   <button
                     type="button"
-                    onClick={() => handleOpenCropperForExisting(coverImageAtt.fileData!)}
+                    onClick={() => handleOpenCropperForCover(coverImageAtt.fileData!)}
                     className="p-1.5 rounded-md bg-tempo-600 hover:bg-tempo-500 text-white transition cursor-pointer text-xs flex items-center gap-1 font-bold"
                     title="Decupează / Ajustează încadrarea"
                   >
@@ -279,7 +316,7 @@ export const StepAttachments: React.FC = () => {
                       {/* Interactive Crop Button */}
                       <button
                         type="button"
-                        onClick={() => handleOpenCropperForExisting(coverImageAtt.fileData!)}
+                        onClick={() => handleOpenCropperForCover(coverImageAtt.fileData!)}
                         className="inline-flex items-center px-3.5 py-2 rounded-lg border border-tempo-300 bg-blue-50 hover:bg-tempo-100 text-tempo-700 text-xs font-bold shadow-2xs transition cursor-pointer"
                         title="Decupează sau alege zona vizibilă a fotografiei"
                       >
@@ -306,6 +343,149 @@ export const StepAttachments: React.FC = () => {
                         }
                         className="inline-flex items-center px-3 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer"
                         title="Elimină poza de copertă"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        Șterge
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. PANEL IMAGE SECTION: IMAGINE TABLOU DE COMANDA */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 overflow-hidden">
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-md bg-indigo-50 text-indigo-600">
+              <ImageIcon className="w-4 h-4" />
+            </span>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                2. Imagine Tablou de Comandă — Panou Electric
+              </h3>
+              <p className="text-xs text-slate-500">
+                Această fotografie va apărea pe partea dreaptă a textului din capitolul <strong>Tabloul de Comandă</strong>.
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
+            Capitolul Tablou Comandă
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-5">
+          {/* Panel Thumbnail Preview */}
+          <div className="w-36 h-40 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 relative group">
+            {panelImageAtt && panelImageAtt.fileData ? (
+              <>
+                <img
+                  src={panelImageAtt.fileData}
+                  alt="Poză Tablou de Comandă"
+                  className="w-full h-full object-contain p-1 bg-slate-100"
+                />
+                <div className="absolute inset-0 bg-black/50 text-white flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition p-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCropperForPanel(panelImageAtt.fileData!)}
+                    className="p-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer text-xs flex items-center gap-1 font-bold"
+                    title="Decupează / Ajustează încadrarea"
+                  >
+                    <Crop className="w-3.5 h-3.5" />
+                    Decupează
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPreview(panelImageAtt)}
+                    className="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-white transition cursor-pointer text-xs"
+                    title="Mărește poza"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center p-3 text-slate-400">
+                <Camera className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                <span className="text-[10px] font-semibold">Fără poză panou</span>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Controls for Panel Image */}
+          <div className="flex-1 space-y-3 text-center sm:text-left">
+            <div>
+              <div className="font-bold text-sm text-slate-800">
+                {panelImageAtt?.fileName || 'Picture3.jpg'}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Format recomandat: JPG, PNG, WEBP. Se potrivește optim în format portret (3:4) sau pătrat (1:1).
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+              {panelImageAtt && (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={(el) => (fileInputRefs.current[panelImageAtt.id] = el)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(panelImageAtt.id, file, true);
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRefs.current[panelImageAtt.id]?.click()}
+                    disabled={loadingUploadId === panelImageAtt.id}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    {loadingUploadId === panelImageAtt.id
+                      ? 'Se încarcă...'
+                      : panelImageAtt.fileData
+                      ? 'Schimbă Poza Tablou'
+                      : 'Încarcă Poză Tablou'}
+                  </button>
+
+                  {panelImageAtt.fileData && (
+                    <>
+                      {/* Interactive Crop Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCropperForPanel(panelImageAtt.fileData!)}
+                        className="inline-flex items-center px-3.5 py-2 rounded-lg border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold shadow-2xs transition cursor-pointer"
+                        title="Decupează sau alege zona vizibilă a fotografiei"
+                      >
+                        <Crop className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                        Decupează / Ajustează Poza
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPreview(panelImageAtt)}
+                        className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                        Previzualizează
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachment(panelImageAtt.id, {
+                            fileData: undefined,
+                            fileName: undefined,
+                          })
+                        }
+                        className="inline-flex items-center px-3 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition cursor-pointer"
+                        title="Elimină poza de tablou"
                       >
                         <Trash2 className="w-3.5 h-3.5 mr-1" />
                         Șterge
@@ -494,6 +674,9 @@ export const StepAttachments: React.FC = () => {
           isOpen={isCropperOpen}
           onClose={() => setIsCropperOpen(false)}
           onCropSave={handleSaveCroppedImage}
+          title={cropperTitle}
+          subtitle={cropperSubtitle}
+          defaultAspectRatio={cropperAspect}
         />
       )}
 

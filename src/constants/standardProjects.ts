@@ -2,6 +2,7 @@ import { ProjectFullState } from '../services/storageService';
 import { ProjectInfo, Chapter, AttachmentFile } from '../types/project';
 import { INITIAL_CHAPTERS } from './defaultChapters';
 import { SAMPLE_COVER_IMAGE } from './sampleCoverImage';
+import { SAMPLE_PANEL_IMAGE } from './samplePanelImage';
 import { SAMPLE_PDFS } from './samplePdfs';
 
 // Helper to renumber chapters consecutively
@@ -66,6 +67,15 @@ const createAttachmentsForAlbaIulia = (schemaFileName: string): AttachmentFile[]
       type: 'cover_image',
     },
     {
+      id: 'att-imagine-tablou',
+      name: 'Imagine Tablou de Comandă (Panou Electric)',
+      fileName: 'Picture3.jpg',
+      fileData: SAMPLE_PANEL_IMAGE,
+      pageCount: 0,
+      isActive: true,
+      type: 'panel_image',
+    },
+    {
       id: 'att-fisa-pompa',
       name: 'Fișa pompă',
       fileName: '5_98626047_SLV808092251DC.pdf',
@@ -117,6 +127,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     telefonService: '021-330 02 36 / 0725-922 944',
     emailService: 'office@tempoconsimex.ro',
     coverImage: SAMPLE_COVER_IMAGE,
+    panelImage: SAMPLE_PANEL_IMAGE,
   };
 
   // -------------------------------------------------------------
@@ -147,6 +158,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     telefonService: '021-330 02 36 / 0725-922 944',
     emailService: 'office@tempoconsimex.ro',
     coverImage: SAMPLE_COVER_IMAGE,
+    panelImage: SAMPLE_PANEL_IMAGE,
   };
 
   // -------------------------------------------------------------
@@ -177,6 +189,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     telefonService: '021-330 02 36 / 0725-922 944',
     emailService: 'office@tempoconsimex.ro',
     coverImage: SAMPLE_COVER_IMAGE,
+    panelImage: SAMPLE_PANEL_IMAGE,
   };
 
   // -------------------------------------------------------------
@@ -207,6 +220,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
     telefonService: '021-330 02 36 / 0725-922 944',
     emailService: 'office@tempoconsimex.ro',
     coverImage: SAMPLE_COVER_IMAGE,
+    panelImage: SAMPLE_PANEL_IMAGE,
   };
 
   return [
@@ -256,6 +270,15 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
           pageCount: 0,
           isActive: true,
           type: 'cover_image',
+        },
+        {
+          id: 'att-imagine-tablou',
+          name: 'Imagine Tablou de Comandă (Panou Electric)',
+          fileName: 'Picture3.jpg',
+          fileData: SAMPLE_PANEL_IMAGE,
+          pageCount: 0,
+          isActive: true,
+          type: 'panel_image',
         },
         {
           id: 'att-fisa-pompa',

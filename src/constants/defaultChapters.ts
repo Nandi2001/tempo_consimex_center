@@ -484,24 +484,34 @@ const CH12_PAGE_1 = `
     </h2>
   </div>
 
-  <p style="margin-bottom: 14px;">
-    Un exemplar din schema tabloului de comandă este amplasat în tablou. Vă rugăm a păstra acest exemplar la îndemâna electricianului de serviciu.
-  </p>
+  <div style="display: flex; flex-direction: row; gap: 24px; align-items: flex-start;">
+    <!-- Left Text Column -->
+    <div style="flex: 1; min-width: 0;">
+      <p style="margin-bottom: 14px;">
+        Un exemplar din schema tabloului de comandă este amplasat în tablou. Vă rugăm a păstra acest exemplar la îndemâna electricianului de serviciu.
+      </p>
 
-  <!-- Yellow Warning Box -->
-  <div style="background-color: #fffbeb; border: 1.5px solid #fef3c7; border-left: 5px solid #f59e0b; padding: 14px 18px; border-radius: 6px; margin: 20px 0; color: #92400e;">
-    <strong>Atenție:</strong> Este interzisă orice modificare a tabloului de comandă în perioada de garanție. Orice intervenție neavizată de furnizor duce automat la pierderea garanției.
+      <!-- Yellow Warning Box -->
+      <div style="background-color: #fffbeb; border: 1.5px solid #fef3c7; border-left: 5px solid #f59e0b; padding: 12px 14px; border-radius: 6px; margin: 16px 0; color: #92400e; font-size: 12px; line-height: 1.6;">
+        <strong>Atenție:</strong> Este interzisă orice modificare a tabloului de comandă în perioada de garanție. Orice intervenție neavizată de furnizor duce automat la pierderea garanției.
+      </div>
+
+      <p style="margin-bottom: 14px;">
+        Suportul tabloului de comandă va fi obligatoriu racordat la rețeaua de împământare. Verificați existența acestor conexiuni ori de câte ori inspectați stația de pompare!
+      </p>
+
+      <p style="margin-bottom: 20px;">
+        În cazul în care executați intervenții la părți componente cu acționare/alimentare cu energie electrică acestea se vor scoate obligatoriu de sub tensiune prin intermediul întrerupătorului general amplasat pe partea laterală a tabloului de comandă.
+      </p>
+    </div>
+
+    <!-- Right Picture Column: Tablou de Comandă Photo -->
+    <div style="width: 240px; shrink: 0; display: flex; flex-direction: column; align-items: center;">
+      {{IMAGINE_TABLOU}}
+    </div>
   </div>
 
-  <p style="margin-bottom: 14px;">
-    Suportul tabloului de comandă va fi obligatoriu racordat la rețeaua de împământare. Verificați existența acestor conexiuni ori de câte ori inspectați stația de pompare!
-  </p>
-
-  <p style="margin-bottom: 20px;">
-    În cazul în care executați intervenții la părți componente cu acționare/alimentare cu energie electrică acestea se vor scoate obligatoriu de sub tensiune prin intermediul întrerupătorului general amplasat pe partea laterală a tabloului de comandă.
-  </p>
-
-  <div style="margin-top: 80px; text-align: right;">
+  <div style="margin-top: 60px; text-align: right;">
     <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b;">FURNIZOR,</div>
     <div style="font-size: 16px; font-weight: 800; color: #0267c8;">{{FURNIZOR}}</div>
   </div>

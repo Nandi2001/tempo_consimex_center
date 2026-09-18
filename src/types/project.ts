@@ -23,6 +23,7 @@ export interface ProjectInfo {
   telefonService: string;         // Telefon service / contact (e.g. "021-330 02 36 / 0725-922 944")
   emailService: string;           // Email service / contact
   coverImage?: string;            // Base64 Data URL for cover photo (middle of Page 1)
+  panelImage?: string;            // Base64 Data URL for control panel photo (Electrice / Tablou)
 }
 
 export type ChapterType = 'text' | 'attachment';
@@ -54,7 +55,7 @@ export interface AttachmentFile {
   sizeBytes?: number;
   chapterId?: string;             // Attached chapter reference
   isActive: boolean;
-  type: 'cover_image' | 'fisa_pompa' | 'test_pompa' | 'schema_instalatie' | 'custom';
+  type: 'cover_image' | 'panel_image' | 'fisa_pompa' | 'test_pompa' | 'schema_instalatie' | 'custom';
   pumpIndex?: number;             // For test_pompa_1, test_pompa_2, etc.
 }
 

@@ -9,6 +9,7 @@ import {
 import { storageService, ProjectFullState } from '../services/storageService';
 import { pdfService } from '../services/pdfService';
 import { getStandardInitialProjects } from '../constants/standardProjects';
+import { SAMPLE_PANEL_IMAGE } from '../constants/samplePanelImage';
 
 interface ProjectState {
   projectId: string;
@@ -67,7 +68,7 @@ interface ProjectState {
 }
 
 // Helper to create default attachments list
-const createDefaultAttachments = (nrPompe: number, coverImage?: string): AttachmentFile[] => {
+const createDefaultAttachments = (nrPompe: number, coverImage?: string, panelImage?: string): AttachmentFile[] => {
   const list: AttachmentFile[] = [
     {
       id: 'att-imagine-coperta',
@@ -77,6 +78,15 @@ const createDefaultAttachments = (nrPompe: number, coverImage?: string): Attachm
       pageCount: 0,
       isActive: true,
       type: 'cover_image',
+    },
+    {
+      id: 'att-imagine-tablou',
+      name: 'Imagine Tablou de Comandă (Panou Electric)',
+      fileName: 'Picture3.jpg',
+      fileData: panelImage !== undefined ? panelImage : (DEFAULT_PROJECT_INFO.panelImage || SAMPLE_PANEL_IMAGE),
+      pageCount: 0,
+      isActive: true,
+      type: 'panel_image',
     },
     {
       id: 'att-fisa-pompa',
@@ -465,6 +475,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         };
       }
 
+      // If updating panel image attachment, sync with projectInfo.panelImage
+      if (attachmentId === 'att-imagine-tablou' || updates.type === 'panel_image') {
+        updatedProjectInfo = {
+          ...updatedProjectInfo,
+          panelImage: updates.fileData !== undefined ? updates.fileData : state.projectInfo.panelImage,
+        };
+      }
+
       return {
         attachments: updatedAttachments,
         projectInfo: updatedProjectInfo,
@@ -694,12 +712,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       `;
     }
 
+    const panelImg = p.panelImage || state.attachments.find((a) => a.type === 'panel_image')?.fileData || SAMPLE_PANEL_IMAGE;
+    let panelImageHtml = '';
+    if (panelImg) {
+      panelImageHtml = `
+        <div style="width: 100%; max-width: 240px; display: flex; justify-content: center; align-items: center; margin: 0 auto;">
+          <img src="${panelImg}" style="max-width: 100%; max-height: 330px; width: auto; height: auto; display: block; border-radius: 8px; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);" alt="Tablou de comandă" />
+        </div>
+      `;
+    } else {
+      panelImageHtml = `
+        <div style="width: 100%; max-width: 240px; height: 260px; border: 2px dashed #cbd5e1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #f8fafc; color: #94a3b8; padding: 12px; margin: 0 auto; text-align: center;">
+          <div style="font-size: 12px; font-weight: 700; color: #64748b;">[ Poză Tablou Comandă ]</div>
+          <div style="font-size: 10px; color: #94a3b8; margin-top: 4px;">Încărcați poza în Pasul 2 (Atașamente)</div>
+        </div>
+      `;
+    }
+
     let comutatoareHtml = '';
     if (p.nrPompe === 1 || p.nrComutatoare === 2) {
       comutatoareHtml = `
         <ul style="margin: 0 0 14px 20px; padding: 0;">
           <li style="margin-bottom: 6px;"><strong>Nivel minim:</strong> Nivel de interdicție pentru pornirea manuală a pompelor din cauza lipsei suficiente de apă.</li>
-          <li style="margin-bottom: 6px;"><strong>Pornire pompa:</strong> Când apa crește la acest nivel se pornește pompa.</li>
+          <li style="margin-bottom: 6px;"><strong>Pornire pompa:</strong> Când nivelul apei ridică comutatorul de nivel pornește pompa. În cazul în care după câteva minute nu dispare semnalul înseamnă că pompele nu fac față debitului sosit în stația de pompare sau sunt defecțiuni. Este necesară intervenția operatorului pentru verificări.</li>
         </ul>
       `;
     } else if ((p.nrPompe && p.nrPompe >= 3) || (p.nrComutatoare && p.nrComutatoare >= 4)) {
@@ -733,6 +768,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       '{{DIMENSIUNE_PARTICULA}}': p.dimensiuneParticula || '80 mm',
       '{{BAZIN_CONSTRUCTIV_DESCRIERE}}': bazinDescriere,
       '{{IMAGINE_COPERTA}}': coverImageHtml,
+      '{{IMAGINE_TABLOU}}': panelImageHtml,
+      '{{IMAGINE_PANOU}}': panelImageHtml,
       '{{DEBIT_POMPARE}}': p.debitPompare || '',
       '{{INALTIME_POMPARE}}': p.inaltimePompare || '',
       '{{NR_POMPE}}': String(p.nrPompe || 1),
@@ -1117,6 +1154,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
                 uploadedAt: new Date().toLocaleTimeString(),
               };
             }
+            if (att.type === 'panel_image' && SAMPLE_PANEL_IMAGE) {
+              return {
+                ...att,
+                fileData: SAMPLE_PANEL_IMAGE,
+                fileName: 'Picture3.jpg',
+                pageCount: 0,
+                uploadedAt: new Date().toLocaleTimeString(),
+              };
+            }
             if (att.type === 'fisa_pompa' && SAMPLE_PDFS.fisaPompa) {
               return {
                 ...att,
@@ -1161,6 +1207,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             projectInfo: {
               ...state.projectInfo,
               coverImage: SAMPLE_COVER_IMAGE,
+              panelImage: SAMPLE_PANEL_IMAGE,
             },
             isAutoSaved: false,
           };

@@ -1,5 +1,6 @@
 import { ProjectInfo } from '../types/project';
 import { SAMPLE_COVER_IMAGE } from './sampleCoverImage';
+import { SAMPLE_PANEL_IMAGE } from './samplePanelImage';
 
 export const STANDARD_DN_VALUES = [
   'DN32',
@@ -52,6 +53,7 @@ export const DEFAULT_PROJECT_INFO: ProjectInfo = {
   telefonService: '021-330 02 36 / 0725-922 944',
   emailService: 'office@tempoconsimex.ro',
   coverImage: SAMPLE_COVER_IMAGE,
+  panelImage: SAMPLE_PANEL_IMAGE,
 };
 
 export const TIP_SP_OPTIONS = [

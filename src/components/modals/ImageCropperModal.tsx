@@ -20,6 +20,9 @@ interface ImageCropperModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCropSave: (croppedDataUrl: string) => void;
+  title?: string;
+  subtitle?: string;
+  defaultAspectRatio?: number;
 }
 
 export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
@@ -27,13 +30,26 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   isOpen,
   onClose,
   onCropSave,
+  title = 'Decupare & Ajustare Fotografie',
+  subtitle = 'Alegeți zona vizibilă. Trageți poza pentru a o poziționa și folosiți zoom-ul.',
+  defaultAspectRatio = 16 / 10,
 }) => {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [aspectRatio, setAspectRatio] = useState<number | undefined>(16 / 10);
+  const [aspectRatio, setAspectRatio] = useState<number | undefined>(defaultAspectRatio);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Sync aspectRatio when defaultAspectRatio changes or modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setAspectRatio(defaultAspectRatio);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setRotation(0);
+    }
+  }, [isOpen, defaultAspectRatio]);
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -58,7 +74,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setRotation(0);
-    setAspectRatio(16 / 10);
+    setAspectRatio(defaultAspectRatio);
   };
 
   if (!isOpen) return null;
@@ -74,10 +90,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             </div>
             <div>
               <h3 className="font-extrabold text-base tracking-tight">
-                Decupare & Ajustare Fotografie Copertă
+                {title}
               </h3>
               <p className="text-xs text-slate-400">
-                Alegeți zona vizibilă pe prima pagină. Trageți poza pentru a o poziționa și folosiți zoom-ul.
+                {subtitle}
               </p>
             </div>
           </div>
@@ -132,6 +148,10 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             <span>
               {aspectRatio === 16 / 10
                 ? 'Format Copertă (16:10)'
+                : aspectRatio === 3 / 4
+                ? 'Format Panou Portret (3:4)'
+                : aspectRatio === 2 / 3
+                ? 'Format Portret (2:3)'
                 : aspectRatio === 16 / 9
                 ? 'Format Panoramic (16:9)'
                 : aspectRatio === 3 / 2
@@ -156,17 +176,18 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { label: '16:10 (Recomandat)', val: 16 / 10 },
-                  { label: '16:9', val: 16 / 9 },
-                  { label: '3:2', val: 3 / 2 },
-                  { label: '4:3', val: 4 / 3 },
+                  { label: '16:10', val: 16 / 10 },
+                  { label: '3:4 (Panou)', val: 3 / 4 },
                   { label: '1:1', val: 1 },
+                  { label: '4:3', val: 4 / 3 },
+                  { label: '16:9', val: 16 / 9 },
+                  { label: '2:3', val: 2 / 3 },
                 ].map((preset) => (
                   <button
                     key={preset.label}
                     type="button"
                     onClick={() => setAspectRatio(preset.val)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                    className={`px-2 py-1 rounded-md text-xs font-semibold transition ${
                       aspectRatio === preset.val
                         ? 'bg-tempo-600 text-white font-bold shadow-xs'
                         : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
