@@ -234,6 +234,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         projectInfo: {
           ...state.projectInfo,
           nrPompe: validCount,
+          nrComutatoare: validCount + 1,
           seriiPompe: newSerii,
         },
         attachments: [...otherAttachments, ...testAttachments],
@@ -694,7 +695,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     let comutatoareHtml = '';
-    if ((p.nrPompe && p.nrPompe >= 3) || (p.nrComutatoare && p.nrComutatoare >= 4)) {
+    if (p.nrPompe === 1 || p.nrComutatoare === 2) {
+      comutatoareHtml = `
+        <ul style="margin: 0 0 14px 20px; padding: 0;">
+          <li style="margin-bottom: 6px;"><strong>Nivel minim:</strong> Nivel de interdicție pentru pornirea manuală a pompelor din cauza lipsei suficiente de apă.</li>
+          <li style="margin-bottom: 6px;"><strong>Pornire pompa:</strong> Când apa crește la acest nivel se pornește pompa.</li>
+        </ul>
+      `;
+    } else if ((p.nrPompe && p.nrPompe >= 3) || (p.nrComutatoare && p.nrComutatoare >= 4)) {
       comutatoareHtml = `
         <ul style="margin: 0 0 14px 20px; padding: 0;">
           <li style="margin-bottom: 6px;"><strong>Nivel minim:</strong> Nivel de interdicție pentru pornirea manuală a pompelor din cauza lipsei suficiente de apă.</li>
