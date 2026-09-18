@@ -98,9 +98,120 @@ const createAttachmentsForAlbaIulia = (schemaFileName: string): AttachmentFile[]
   ];
 };
 
+const createSinglePumpChapters = (): Chapter[] => {
+  const chapterOrderIds = [
+    'ch-1',  // 1. Prima pagină (2 pag)
+    'ch-2',  // 2. Conținut (1 pag)
+    'ch-3',  // 3. Descriere SP (2 pag)
+    'ch-4',  // 4. Pompe SP (1 pag)
+    'ch-5',  // 5. Fișa Pompe (10 pag)
+    'ch-6',  // 6. Test Pompă 1 (2 pag)
+    'ch-8',  // 7. Scheme Instalație (1 pag)
+    'ch-9',  // 8. Jurnal de Întreținere (4 pag)
+    'ch-10', // 9. Securitatea și Sănătatea Muncii (SSM) (2 pag)
+    'ch-11', // 10. Defecțiuni și Remediere (1 pag)
+    'ch-12', // 11. Instalații Electrice & Tablou (1 pag)
+  ];
+
+  const orderedChapters: Chapter[] = [];
+  chapterOrderIds.forEach((id) => {
+    const found = INITIAL_CHAPTERS.find((c) => c.id === id);
+    if (found) {
+      orderedChapters.push({ ...found, isActive: true });
+    }
+  });
+
+  return renumber(orderedChapters);
+};
+
+const createSinglePumpAttachments = (): AttachmentFile[] => {
+  return [
+    {
+      id: 'att-imagine-coperta',
+      name: 'Imagine Copertă (Poză Stație de Pompare)',
+      fileName: 'Fotografie_statie_coperta.jpg',
+      fileData: SAMPLE_COVER_IMAGE,
+      pageCount: 0,
+      isActive: true,
+      type: 'cover_image',
+    },
+    {
+      id: 'att-imagine-tablou',
+      name: 'Imagine Tablou de Comandă (Panou Electric)',
+      fileName: 'Picture3.jpg',
+      fileData: SAMPLE_PANEL_IMAGE,
+      pageCount: 0,
+      isActive: true,
+      type: 'panel_image',
+    },
+    {
+      id: 'att-fisa-pompa',
+      name: 'Fișa pompă',
+      fileName: '5_98626047_SLV808092251DC.pdf',
+      fileData: SAMPLE_PDFS.fisaPompa,
+      pageCount: 10,
+      isActive: true,
+      type: 'fisa_pompa',
+      chapterId: 'ch-5',
+    },
+    {
+      id: 'att-test-pompa-1',
+      name: 'Test pompe 1',
+      fileName: '6_TEST_POMPA_770_000062.pdf',
+      fileData: SAMPLE_PDFS.testPompa1,
+      pageCount: 2,
+      isActive: true,
+      type: 'test_pompa',
+      pumpIndex: 1,
+      chapterId: 'ch-6',
+    },
+    {
+      id: 'att-schema-instalatie',
+      name: 'Scheme instalație',
+      fileName: '8_INSTA_SPP_PENNY_SANCRAIU_MS.pdf',
+      fileData: SAMPLE_PDFS.schemaInstalatie,
+      pageCount: 1,
+      isActive: true,
+      type: 'schema_instalatie',
+      chapterId: 'ch-8',
+    },
+  ];
+};
+
 export const getStandardInitialProjects = (): ProjectFullState[] => {
   // -------------------------------------------------------------
-  // 1. CDA_46 BR1: Canalizare stradală str. Emil Racovița BR1 (Alba Iulia)
+  // 1. CDA-2026-012: Stație de Pompare cu 1 Pompă și 2 Comutatoare de Nivel
+  // -------------------------------------------------------------
+  const cda012Info: ProjectInfo = {
+    cdaNr: 'CDA-2026-012',
+    denumireLocatie: 'Stație de Pompare CDA-2026-012',
+    localitate: 'Alba Iulia',
+    judet: 'Alba',
+    tipSP: 'Ape meteorice',
+    tipBazin: 'Bazin Oțel',
+    diametruBazinOtel: '2.00 m',
+    dimensiuneParticula: '80 mm',
+    debitPompare: '1 x 15 l/s',
+    inaltimePompare: '12 mcA',
+    nrPompe: 1,
+    tipPompe: 'SLV.80.80.92.2.51D.C',
+    seriiPompe: ['9862604710001770'],
+    nrComutatoare: 2,
+    diametruGoluriPompe: 'fi800',
+    diametruGolAcces: 'fi800',
+    diametruRefulare: 'DN80',
+    anFabricatie: '2026',
+    furnizor: 'PURECO ENVIRONMENT SRL',
+    beneficiar: 'Stație de Pompare CDA-2026-012',
+    antreprenor: '-',
+    telefonService: '021-330 02 36 / 0725-922 944',
+    emailService: 'office@tempoconsimex.ro',
+    coverImage: SAMPLE_COVER_IMAGE,
+    panelImage: SAMPLE_PANEL_IMAGE,
+  };
+
+  // -------------------------------------------------------------
+  // 2. CDA_46 BR1: Canalizare stradală str. Emil Racovița BR1 (Alba Iulia)
   // -------------------------------------------------------------
   const br1Info: ProjectInfo = {
     cdaNr: 'CDA-2025-046-BR1',
@@ -131,7 +242,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   };
 
   // -------------------------------------------------------------
-  // 2. CDA_46 BR2: Canalizare stradală str. Emil Racovița BR2 (Alba Iulia)
+  // 3. CDA_46 BR2: Canalizare stradală str. Emil Racovița BR2 (Alba Iulia)
   // -------------------------------------------------------------
   const br2Info: ProjectInfo = {
     cdaNr: 'CDA-2025-046-BR2',
@@ -162,7 +273,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   };
 
   // -------------------------------------------------------------
-  // 3. CDA_46 BR3: Canalizare stradală str. Emil Racovița BR3 (Alba Iulia)
+  // 4. CDA_46 BR3: Canalizare stradală str. Emil Racovița BR3 (Alba Iulia)
   // -------------------------------------------------------------
   const br3Info: ProjectInfo = {
     cdaNr: 'CDA-2025-046-BR3',
@@ -193,7 +304,7 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   };
 
   // -------------------------------------------------------------
-  // 4. Reference Penny Sancraiu de Mures
+  // 5. Reference Penny Sancraiu de Mures
   // -------------------------------------------------------------
   const pennyInfo: ProjectInfo = {
     cdaNr: 'CDA-2026-084',
@@ -224,6 +335,16 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   };
 
   return [
+    {
+      id: 'proj_cda_2026_012',
+      version: '1.0.0',
+      createdAt: '2026-08-30T10:00:00.000Z',
+      savedAt: new Date().toISOString(),
+      projectInfo: cda012Info,
+      chapters: createSinglePumpChapters(),
+      attachments: createSinglePumpAttachments(),
+      activeStep: 0,
+    },
     {
       id: 'proj_cda46_alba_iulia_br1',
       version: '1.0.0',

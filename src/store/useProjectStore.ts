@@ -150,6 +150,89 @@ export const renumberChapters = (chaptersList: Chapter[]): Chapter[] => {
   });
 };
 
+// Helper to migrate and upgrade loaded project state from IndexedDB or JSON
+export const upgradeLoadedProject = (target: ProjectFullState): ProjectFullState => {
+  const isCda012 = (target.projectInfo?.cdaNr || '').includes('012') || target.id === 'proj_cda_2026_012';
+
+  const upgradedProjectInfo: ProjectInfo = {
+    ...DEFAULT_PROJECT_INFO,
+    ...target.projectInfo,
+    nrPompe: isCda012 ? 1 : target.projectInfo?.nrPompe || 2,
+    nrComutatoare: isCda012 ? 2 : target.projectInfo?.nrComutatoare || (target.projectInfo?.nrPompe ? target.projectInfo.nrPompe + 1 : 3),
+    panelImage: target.projectInfo?.panelImage || SAMPLE_PANEL_IMAGE,
+  };
+
+  if (isCda012 && (!upgradedProjectInfo.seriiPompe || upgradedProjectInfo.seriiPompe.length === 0)) {
+    upgradedProjectInfo.seriiPompe = ['9862604710001770'];
+  }
+
+  let upgradedChapters = (target.chapters || []).map((ch) => {
+    let chToUse = ch;
+    // Check if chapter formatting is damaged or ch-12 lacks IMAGINE_TABLOU
+    const needsCh12Update = ch.id === 'ch-12' && (!ch.contentHtml?.includes('IMAGINE_TABLOU') && !(ch.pages || []).some(p => p.includes('IMAGINE_TABLOU')));
+    if (isChapterFormattingDamaged(ch) || needsCh12Update) {
+      const def = getDefaultChapterTemplate(ch.id);
+      if (def) {
+        chToUse = {
+          ...ch,
+          pages: def.pages ? [...def.pages] : undefined,
+          contentHtml: def.contentHtml,
+          estimatedPageCount: def.estimatedPageCount,
+        };
+      }
+    }
+    if (!chToUse.pages || chToUse.pages.length === 0) {
+      const split = pdfService.splitHtmlIntoPages(chToUse.contentHtml || '');
+      return { ...chToUse, pages: split, estimatedPageCount: split.length };
+    }
+    return chToUse;
+  });
+
+  // For 1-pump projects (such as CDA-2026-012), remove extra test pump chapters (ch-7)
+  if (upgradedProjectInfo.nrPompe === 1) {
+    upgradedChapters = upgradedChapters.filter(c => c.id !== 'ch-7' && !c.id.startsWith('ch-test-2') && !c.id.startsWith('ch-test-3'));
+  }
+
+  // Ensure attachments contain panel_image and correct test pump attachments
+  let upgradedAttachments = [...(target.attachments || createDefaultAttachments(upgradedProjectInfo.nrPompe))];
+  if (upgradedProjectInfo.nrPompe === 1) {
+    upgradedAttachments = upgradedAttachments.filter(a => a.id !== 'att-test-pompa-2' && a.pumpIndex !== 2);
+  }
+
+  if (!upgradedAttachments.some(a => a.type === 'panel_image' || a.id === 'att-imagine-tablou')) {
+    const coverIdx = upgradedAttachments.findIndex(a => a.type === 'cover_image' || a.id === 'att-imagine-coperta');
+    const insertIdx = coverIdx >= 0 ? coverIdx + 1 : 0;
+    const panelAtt: AttachmentFile = {
+      id: 'att-imagine-tablou',
+      name: 'Imagine Tablou de Comandă (Panou Electric)',
+      fileName: 'Picture3.jpg',
+      fileData: upgradedProjectInfo.panelImage || SAMPLE_PANEL_IMAGE,
+      pageCount: 0,
+      isActive: true,
+      type: 'panel_image',
+    };
+    upgradedAttachments.splice(insertIdx, 0, panelAtt);
+  } else {
+    upgradedAttachments = upgradedAttachments.map(a => {
+      if ((a.type === 'panel_image' || a.id === 'att-imagine-tablou') && !a.fileData) {
+        return {
+          ...a,
+          fileData: upgradedProjectInfo.panelImage || SAMPLE_PANEL_IMAGE,
+          fileName: a.fileName || 'Picture3.jpg',
+        };
+      }
+      return a;
+    });
+  }
+
+  return {
+    ...target,
+    projectInfo: upgradedProjectInfo,
+    chapters: renumberChapters(upgradedChapters),
+    attachments: upgradedAttachments,
+  };
+};
+
 let autoSaveTimer: any = null;
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -811,10 +894,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadProjectsList: async () => {
     try {
       const all = await storageService.getAllProjects();
-      const sanitized = all.map((p) => ({
-        ...p,
-        chapters: renumberChapters(p.chapters || []),
-      }));
+      const sanitized = all.map((p) => upgradeLoadedProject(p));
       set({ savedProjects: sanitized });
     } catch (err) {
       console.warn('Failed to load projects list:', err);
@@ -829,39 +909,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
 
       set({ isLoading: true });
-      const target = await storageService.getProject(id);
-      if (!target) {
+      const rawTarget = await storageService.getProject(id);
+      if (!rawTarget) {
         set({ isLoading: false });
         return;
       }
 
-      const upgradedChapters = (target.chapters || []).map((ch) => {
-        let chToUse = ch;
-        if (isChapterFormattingDamaged(ch)) {
-          const def = getDefaultChapterTemplate(ch.id);
-          if (def) {
-            chToUse = {
-              ...ch,
-              pages: def.pages ? [...def.pages] : undefined,
-              contentHtml: def.contentHtml,
-              estimatedPageCount: def.estimatedPageCount,
-            };
-          }
-        }
-        if (!chToUse.pages || chToUse.pages.length === 0) {
-          const split = pdfService.splitHtmlIntoPages(chToUse.contentHtml || '');
-          return { ...chToUse, pages: split, estimatedPageCount: split.length };
-        }
-        return chToUse;
-      });
+      const target = upgradeLoadedProject(rawTarget);
 
       set({
         projectId: target.id,
-        projectInfo: target.projectInfo || { ...DEFAULT_PROJECT_INFO },
-        chapters: renumberChapters(upgradedChapters),
-        attachments: target.attachments || createDefaultAttachments(target.projectInfo?.nrPompe || 2),
+        projectInfo: target.projectInfo,
+        chapters: target.chapters,
+        attachments: target.attachments,
         activeStep: preserveStep ? get().activeStep : 1, // Open to Step 1: Informatii unless preserveStep is true
-        selectedChapterId: upgradedChapters[0]?.id || 'ch-1',
+        selectedChapterId: target.chapters[0]?.id || 'ch-1',
         isLoading: false,
         isAutoSaved: true,
         lastSavedAt: target.savedAt ? new Date(target.savedAt).toLocaleTimeString() : null,
@@ -909,7 +971,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     set({
       projectId: newId,
-      savedProjects: updatedList,
+      savedProjects: updatedList.map((p) => upgradeLoadedProject(p)),
       projectInfo: newProjectInfo,
       chapters: newChapters,
       attachments: newAttachments,
@@ -930,7 +992,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
 
       const remaining = await storageService.deleteProject(id);
-      set({ savedProjects: remaining });
+      set({ savedProjects: remaining.map((p) => upgradeLoadedProject(p)) });
 
       // If we deleted the currently active project, switch to another or create a new one
       if (get().projectId === id) {
@@ -958,7 +1020,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const duplicated = await storageService.duplicateProject(id);
       if (duplicated) {
         const all = await storageService.getAllProjects();
-        set({ savedProjects: all });
+        set({ savedProjects: all.map((p) => upgradeLoadedProject(p)) });
       }
     } catch (err) {
       console.error('Failed to duplicate project:', err);
@@ -983,7 +1045,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadProjectFromJson: async (file: File, preserveStep = false) => {
     try {
       set({ isLoading: true });
-      const loaded = await storageService.importProjectFromJson(file);
+      const loadedRaw = await storageService.importProjectFromJson(file);
+      const loaded = upgradeLoadedProject(loadedRaw);
 
       // Check if project with loaded.id already exists in IndexedDB
       const existing = await storageService.getProject(loaded.id);
@@ -996,34 +1059,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       await storageService.saveProject(loaded);
       const all = await storageService.getAllProjects();
 
-      const upgradedChapters = (loaded.chapters || []).map((ch) => {
-        let chToUse = ch;
-        if (isChapterFormattingDamaged(ch)) {
-          const def = getDefaultChapterTemplate(ch.id);
-          if (def) {
-            chToUse = {
-              ...ch,
-              pages: def.pages ? [...def.pages] : undefined,
-              contentHtml: def.contentHtml,
-              estimatedPageCount: def.estimatedPageCount,
-            };
-          }
-        }
-        if (!chToUse.pages || chToUse.pages.length === 0) {
-          const split = pdfService.splitHtmlIntoPages(chToUse.contentHtml || '');
-          return { ...chToUse, pages: split, estimatedPageCount: split.length };
-        }
-        return chToUse;
-      });
-
       set({
         projectId: loaded.id,
-        savedProjects: all,
+        savedProjects: all.map((p) => upgradeLoadedProject(p)),
         projectInfo: loaded.projectInfo,
-        chapters: renumberChapters(upgradedChapters),
+        chapters: loaded.chapters,
         attachments: loaded.attachments,
         activeStep: preserveStep ? get().activeStep : 1, // Preserve step if requested, otherwise go to Step 1
-        selectedChapterId: upgradedChapters[0]?.id || 'ch-1',
+        selectedChapterId: loaded.chapters[0]?.id || 'ch-1',
         isLoading: false,
         isAutoSaved: true,
         lastSavedAt: new Date().toLocaleTimeString(),
@@ -1052,38 +1095,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadFromLocalDB: async () => {
     try {
       const allProjects = await storageService.getAllProjects();
-      set({ savedProjects: allProjects });
+      const upgradedList = allProjects.map((p) => upgradeLoadedProject(p));
+      set({ savedProjects: upgradedList });
 
-      if (allProjects.length > 0) {
+      if (upgradedList.length > 0) {
         const activeId = await storageService.getActiveProjectId();
-        const initialProj = (activeId && allProjects.find((p) => p.id === activeId)) || allProjects[0];
-
-        const upgradedChapters = initialProj.chapters.map((ch) => {
-          let chToUse = ch;
-          if (isChapterFormattingDamaged(ch)) {
-            const def = getDefaultChapterTemplate(ch.id);
-            if (def) {
-              chToUse = {
-                ...ch,
-                pages: def.pages ? [...def.pages] : undefined,
-                contentHtml: def.contentHtml,
-                estimatedPageCount: def.estimatedPageCount,
-              };
-            }
-          }
-          if (!chToUse.pages || chToUse.pages.length === 0) {
-            const split = pdfService.splitHtmlIntoPages(chToUse.contentHtml || '');
-            return { ...chToUse, pages: split, estimatedPageCount: split.length };
-          }
-          return chToUse;
-        });
+        const initialProj = (activeId && upgradedList.find((p) => p.id === activeId)) || upgradedList[0];
 
         set({
           projectId: initialProj.id,
           projectInfo: initialProj.projectInfo,
-          chapters: renumberChapters(upgradedChapters),
-          attachments: initialProj.attachments || createDefaultAttachments(initialProj.projectInfo.nrPompe),
-          selectedChapterId: upgradedChapters[0]?.id || 'ch-1',
+          chapters: initialProj.chapters,
+          attachments: initialProj.attachments,
+          selectedChapterId: initialProj.chapters[0]?.id || 'ch-1',
           lastSavedAt: initialProj.savedAt ? new Date(initialProj.savedAt).toLocaleTimeString() : null,
           isAutoSaved: true,
         });

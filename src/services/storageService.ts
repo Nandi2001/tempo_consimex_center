@@ -88,6 +88,18 @@ export const storageService = {
           await set(IDB_INDEX_KEY, validIds);
         }
 
+        // If proj_cda_2026_012 is not yet in validIds, add it so user immediately has CDA-2026-012 available
+        if (!validIds.includes('proj_cda_2026_012')) {
+          const standards = getStandardInitialProjects();
+          const cda012 = standards.find((p) => p.id === 'proj_cda_2026_012');
+          if (cda012) {
+            await set(projectKey(cda012.id), cda012);
+            validProjects.unshift(cda012);
+            validIds.unshift(cda012.id);
+            await set(IDB_INDEX_KEY, validIds);
+          }
+        }
+
         return validProjects;
       } catch (err) {
         console.warn('Failed to load projects list from IndexedDB:', err);
