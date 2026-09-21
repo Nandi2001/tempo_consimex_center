@@ -70,37 +70,35 @@ export const storageService = {
         const keys = index.map((id) => projectKey(id));
         const rawList = await getMany<ProjectFullState>(keys);
 
-        // Filter out any undefined or corrupt entries
-        const validProjects: ProjectFullState[] = [];
-        const validIds: string[] = [];
+        // Filter valid projects and purge proj_cda_2026_012 or any CDA-2026-012 project
+        const remainingProjects: ProjectFullState[] = [];
+        const remainingIds: string[] = [];
 
-        rawList.forEach((proj, i) => {
-          if (proj && proj.id && proj.projectInfo) {
-            validProjects.push(proj);
-            validIds.push(proj.id);
+        for (let i = 0; i < rawList.length; i++) {
+          const proj = rawList[i];
+          const currId = index[i];
+          if (!proj || !proj.id || !proj.projectInfo) {
+            console.warn(`Project with ID "${currId}" was not found or was corrupted.`);
+            continue;
+          }
+          if (proj.id === 'proj_cda_2026_012' || proj.projectInfo?.cdaNr === 'CDA-2026-012') {
+            await del(projectKey(proj.id));
           } else {
-            console.warn(`Project with ID "${index![i]}" was not found or was corrupted.`);
-          }
-        });
-
-        // Clean up index if dead entries were found
-        if (validIds.length !== index.length) {
-          await set(IDB_INDEX_KEY, validIds);
-        }
-
-        // If proj_cda_2026_012 is not yet in validIds, add it so user immediately has CDA-2026-012 available
-        if (!validIds.includes('proj_cda_2026_012')) {
-          const standards = getStandardInitialProjects();
-          const cda012 = standards.find((p) => p.id === 'proj_cda_2026_012');
-          if (cda012) {
-            await set(projectKey(cda012.id), cda012);
-            validProjects.unshift(cda012);
-            validIds.unshift(cda012.id);
-            await set(IDB_INDEX_KEY, validIds);
+            remainingProjects.push(proj);
+            remainingIds.push(proj.id);
           }
         }
 
-        return validProjects;
+        // Clean up index if dead/deleted entries were found
+        if (remainingIds.length !== index.length) {
+          await set(IDB_INDEX_KEY, remainingIds);
+          const activeId = await get<string>(IDB_ACTIVE_ID_KEY);
+          if (activeId === 'proj_cda_2026_012' || (activeId && !remainingIds.includes(activeId))) {
+            await set(IDB_ACTIVE_ID_KEY, remainingIds[0] || null);
+          }
+        }
+
+        return remainingProjects;
       } catch (err) {
         console.warn('Failed to load projects list from IndexedDB:', err);
         return [];

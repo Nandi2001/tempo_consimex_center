@@ -180,38 +180,7 @@ const createSinglePumpAttachments = (): AttachmentFile[] => {
 
 export const getStandardInitialProjects = (): ProjectFullState[] => {
   // -------------------------------------------------------------
-  // 1. CDA-2026-012: Stație de Pompare cu 1 Pompă și 2 Comutatoare de Nivel
-  // -------------------------------------------------------------
-  const cda012Info: ProjectInfo = {
-    cdaNr: 'CDA-2026-012',
-    denumireLocatie: 'Stație de Pompare CDA-2026-012',
-    localitate: 'Alba Iulia',
-    judet: 'Alba',
-    tipSP: 'Ape meteorice',
-    tipBazin: 'Bazin Oțel',
-    diametruBazinOtel: '2.00 m',
-    dimensiuneParticula: '80 mm',
-    debitPompare: '1 x 15 l/s',
-    inaltimePompare: '12 mcA',
-    nrPompe: 1,
-    tipPompe: 'SLV.80.80.92.2.51D.C',
-    seriiPompe: ['9862604710001770'],
-    nrComutatoare: 2,
-    diametruGoluriPompe: 'fi800',
-    diametruGolAcces: 'fi800',
-    diametruRefulare: 'DN80',
-    anFabricatie: '2026',
-    furnizor: 'PURECO ENVIRONMENT SRL',
-    beneficiar: 'Stație de Pompare CDA-2026-012',
-    antreprenor: '-',
-    telefonService: '021-330 02 36 / 0725-922 944',
-    emailService: 'office@tempoconsimex.ro',
-    coverImage: SAMPLE_COVER_IMAGE,
-    panelImage: SAMPLE_PANEL_IMAGE,
-  };
-
-  // -------------------------------------------------------------
-  // 2. CDA_46 BR1: Canalizare stradală str. Emil Racovița BR1 (Alba Iulia)
+  // 1. CDA_46 BR1: Canalizare stradală str. Emil Racovița BR1 (Alba Iulia)
   // -------------------------------------------------------------
   const br1Info: ProjectInfo = {
     cdaNr: 'CDA-2025-046-BR1',
@@ -335,16 +304,6 @@ export const getStandardInitialProjects = (): ProjectFullState[] => {
   };
 
   return [
-    {
-      id: 'proj_cda_2026_012',
-      version: '1.0.0',
-      createdAt: '2026-08-30T10:00:00.000Z',
-      savedAt: new Date().toISOString(),
-      projectInfo: cda012Info,
-      chapters: createSinglePumpChapters(),
-      attachments: createSinglePumpAttachments(),
-      activeStep: 0,
-    },
     {
       id: 'proj_cda46_alba_iulia_br1',
       version: '1.0.0',

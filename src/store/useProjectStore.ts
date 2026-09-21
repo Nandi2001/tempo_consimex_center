@@ -152,19 +152,11 @@ export const renumberChapters = (chaptersList: Chapter[]): Chapter[] => {
 
 // Helper to migrate and upgrade loaded project state from IndexedDB or JSON
 export const upgradeLoadedProject = (target: ProjectFullState): ProjectFullState => {
-  const isCda012 = (target.projectInfo?.cdaNr || '').includes('012') || target.id === 'proj_cda_2026_012';
-
   const upgradedProjectInfo: ProjectInfo = {
     ...DEFAULT_PROJECT_INFO,
     ...target.projectInfo,
-    nrPompe: isCda012 ? 1 : target.projectInfo?.nrPompe || 2,
-    nrComutatoare: isCda012 ? 2 : target.projectInfo?.nrComutatoare || (target.projectInfo?.nrPompe ? target.projectInfo.nrPompe + 1 : 3),
     panelImage: target.projectInfo?.panelImage || SAMPLE_PANEL_IMAGE,
   };
-
-  if (isCda012 && (!upgradedProjectInfo.seriiPompe || upgradedProjectInfo.seriiPompe.length === 0)) {
-    upgradedProjectInfo.seriiPompe = ['9862604710001770'];
-  }
 
   let upgradedChapters = (target.chapters || []).map((ch) => {
     let chToUse = ch;
