@@ -70,7 +70,7 @@ export const storageService = {
         const keys = index.map((id) => projectKey(id));
         const rawList = await getMany<ProjectFullState>(keys);
 
-        // Filter valid projects and purge proj_cda_2026_012 or any CDA-2026-012 project
+        // Filter valid projects and purge only proj_cda_2026_012
         const remainingProjects: ProjectFullState[] = [];
         const remainingIds: string[] = [];
 
@@ -81,7 +81,7 @@ export const storageService = {
             console.warn(`Project with ID "${currId}" was not found or was corrupted.`);
             continue;
           }
-          if (proj.id === 'proj_cda_2026_012' || proj.projectInfo?.cdaNr === 'CDA-2026-012') {
+          if (proj.id === 'proj_cda_2026_012') {
             await del(projectKey(proj.id));
           } else {
             remainingProjects.push(proj);
@@ -89,8 +89,21 @@ export const storageService = {
           }
         }
 
-        // Clean up index if dead/deleted entries were found
-        if (remainingIds.length !== index.length) {
+        // One-time restoration check for proj_igsu_bailesti if missing
+        const igsuRestored = await get<boolean>('carte_tehnica_igsu_restored_v1');
+        if (!igsuRestored && !remainingIds.includes('proj_igsu_bailesti')) {
+          const standards = getStandardInitialProjects();
+          const igsuProj = standards.find((p) => p.id === 'proj_igsu_bailesti');
+          if (igsuProj) {
+            await set(projectKey(igsuProj.id), igsuProj);
+            remainingProjects.unshift(igsuProj);
+            remainingIds.unshift(igsuProj.id);
+          }
+          await set('carte_tehnica_igsu_restored_v1', true);
+        }
+
+        // Clean up index if dead/deleted entries were found or new entries added
+        if (remainingIds.length !== index.length || !remainingIds.every((id, idx) => id === index[idx])) {
           await set(IDB_INDEX_KEY, remainingIds);
           const activeId = await get<string>(IDB_ACTIVE_ID_KEY);
           if (activeId === 'proj_cda_2026_012' || (activeId && !remainingIds.includes(activeId))) {
